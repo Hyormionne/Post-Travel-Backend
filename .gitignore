@@ -28,5 +28,5 @@ lerna-debug.log*
 # Prisma 7 generated client (run `pnpm prisma:generate` after clone)
 /generated
 
-# Internal planning docs
+# Internal Plans
 /docs/superpowers/plans

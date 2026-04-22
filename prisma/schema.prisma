@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoomRole {
+  OWNER
+  MEMBER
+}
+
+enum BlogVisibility {
+  PRIVATE
+  ROOM
+  PUBLIC
+}
+
+enum ClusterType {
+  TIME_GPS
+  VLM_SCENE
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum JobType {
+  VLM_ANALYZE
+  LLM_BLOG_DRAFT
+}
+
+model User {
+  id              String   @id @default(uuid()) @db.Uuid
+  email           String   @unique
+  password        String?
+  nickname        String
+  profileImageUrl String?  @map("profile_image_url")
+  googleSub       String?  @unique @map("google_sub")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  ownedRooms     TravelRoom[] @relation("owner")
+  memberships    RoomMember[]
+  uploadedPhotos Photo[]
+  authoredBlogs  Blog[]
+
+  @@map("users")
+}
+
+model TravelRoom {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  inviteToken String   @unique @map("invite_token")
+  createdBy   String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  owner    User            @relation("owner", fields: [createdBy], references: [id])
+  members  RoomMember[]
+  photos   Photo[]
+  clusters Cluster[]
+  blogs    Blog[]
+  jobs     ProcessingJob[]
+
+  @@map("travel_rooms")
+}
+
+model RoomMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  roomId   String   @map("room_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  role     RoomRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  room TravelRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+  @@map("room_members")
+}
+
+model Photo {
+  id           String    @id @default(uuid()) @db.Uuid
+  roomId       String    @map("room_id") @db.Uuid
+  uploadedBy   String    @map("uploaded_by") @db.Uuid
+  s3Key        String    @map("s3_key")
+  thumbnailKey String?   @map("thumbnail_key")
+  fileSize     Int       @map("file_size")
+  width        Int?
+  height       Int?
+  takenAt      DateTime? @map("taken_at")
+  lat          Float?
+  lng          Float?
+  sceneLabel   String?   @map("scene_label")
+  aiCaption    String?   @map("ai_caption")
+  aiKeywords   String[]  @map("ai_keywords")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  room          TravelRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  uploader      User           @relation(fields: [uploadedBy], references: [id])
+  clusterPhotos ClusterPhoto[]
+  blogPhotos    BlogPhoto[]
+
+  @@index([roomId, takenAt])
+  @@map("photos")
+}
+
+model Cluster {
+  id           String      @id @default(uuid()) @db.Uuid
+  roomId       String      @map("room_id") @db.Uuid
+  title        String
+  summary      String?
+  sceneLabel   String?     @map("scene_label")
+  dayNumber    Int?        @map("day_number")
+  clusterType  ClusterType @default(TIME_GPS) @map("cluster_type")
+  thumbnailKey String?     @map("thumbnail_key")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  room          TravelRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  clusterPhotos ClusterPhoto[]
+
+  @@map("clusters")
+}
+
+model ClusterPhoto {
+  id        String @id @default(uuid()) @db.Uuid
+  clusterId String @map("cluster_id") @db.Uuid
+  photoId   String @map("photo_id") @db.Uuid
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  photo   Photo   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@unique([clusterId, photoId])
+  @@map("cluster_photos")
+}
+
+model Blog {
+  id          String         @id @default(uuid()) @db.Uuid
+  roomId      String         @map("room_id") @db.Uuid
+  authorId    String         @map("author_id") @db.Uuid
+  title       String
+  content     String         @db.Text
+  visibility  BlogVisibility @default(ROOM)
+  publishedAt DateTime?      @map("published_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  room       TravelRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  author     User        @relation(fields: [authorId], references: [id])
+  blogPhotos BlogPhoto[]
+
+  @@map("blogs")
+}
+
+model BlogPhoto {
+  id       String @id @default(uuid()) @db.Uuid
+  blogId   String @map("blog_id") @db.Uuid
+  photoId  String @map("photo_id") @db.Uuid
+  orderIdx Int    @map("order_idx")
+
+  blog  Blog  @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  photo Photo @relation(fields: [photoId], references: [id])
+
+  @@unique([blogId, photoId])
+  @@map("blog_photos")
+}
+
+model ProcessingJob {
+  id         String    @id @default(uuid()) @db.Uuid
+  roomId     String    @map("room_id") @db.Uuid
+  jobType    JobType   @map("job_type")
+  status     JobStatus @default(PENDING)
+  totalCount Int       @default(0) @map("total_count")
+  doneCount  Int       @default(0) @map("done_count")
+  errorMsg   String?   @map("error_msg")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  room TravelRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, status])
+  @@map("processing_jobs")
+}
