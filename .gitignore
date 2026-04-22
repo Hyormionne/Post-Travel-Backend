@@ -1,0 +1,32 @@
+# compiled output
+/dist
+/node_modules
+/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+.idea
+
+# Tests
+/coverage
+/.nyc_output
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Prisma 7 generated client (run `pnpm prisma:generate` after clone)
+/generated
+
+# Internal planning docs
+/docs/superpowers/plans
