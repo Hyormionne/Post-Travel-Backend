@@ -28,5 +28,11 @@ lerna-debug.log*
 # Prisma 7 generated client (run `pnpm prisma:generate` after clone)
 /generated
 
+# TypeScript build cache
+tsconfig.build.tsbuildinfo
+
 # Internal Plans
 /docs/superpowers/plans
+
+# Git worktrees
+.worktrees

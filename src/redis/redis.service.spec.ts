@@ -49,8 +49,12 @@ describe('RedisService', () => {
   });
 
   it('calls getOrThrow with REDIS_HOST and REDIS_PORT during construction', () => {
-    expect(mockConfig.getOrThrow).toHaveBeenCalledWith('REDIS_HOST');
-    expect(mockConfig.getOrThrow).toHaveBeenCalledWith('REDIS_PORT');
+    expect(jest.mocked(mockConfig.getOrThrow)).toHaveBeenCalledWith(
+      'REDIS_HOST',
+    );
+    expect(jest.mocked(mockConfig.getOrThrow)).toHaveBeenCalledWith(
+      'REDIS_PORT',
+    );
   });
 
   it('passes correct options to ioredis constructor', () => {
