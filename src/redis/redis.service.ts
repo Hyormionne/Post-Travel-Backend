@@ -12,6 +12,7 @@ export class RedisService implements OnModuleDestroy {
       host: config.getOrThrow<string>('REDIS_HOST'),
       // Joi schema coerces REDIS_PORT to number; parseInt guards against misconfiguration
       port: parseInt(String(config.getOrThrow('REDIS_PORT')), 10),
+      password: config.get<string>('REDIS_PASSWORD'),
       lazyConnect: false,
       maxRetriesPerRequest: 3,
     });

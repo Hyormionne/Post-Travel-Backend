@@ -1,0 +1,39 @@
+node_modules
+dist
+generated
+coverage
+
+# Git
+.git
+.github
+
+# Environment (never include in image)
+.env*
+
+# Logs
+*.log
+
+# Tests
+test
+coverage
+junit.xml
+test-results/
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Docs & config not needed in container
+docs/
+scripts/
+*.md
+.claude/
+Caddyfile
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# TypeScript build cache
+tsconfig.build.tsbuildinfo

@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: next
+          POSTGRES_PASSWORD: next
+          POSTGRES_DB: next
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U next -d next"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://next:next@localhost:5432/next?schema=public
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_ACCESS_SECRET: ci-access-secret-padded-to-min-32-xxx
+      JWT_REFRESH_SECRET: ci-refresh-secret-padded-to-min-32-xx
+      JWT_ACCESS_EXPIRES: 1h
+      JWT_REFRESH_EXPIRES: 14d
+      GOOGLE_CLIENT_ID: ci-client-id
+      GOOGLE_CLIENT_SECRET: ci-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:3000/auth/google/callback
+      FRONTEND_URL: http://localhost:5173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Lint
+        run: pnpm lint:check
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Migrate database
+        run: pnpm prisma migrate deploy
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: E2E tests
+        run: pnpm test:e2e -- --runInBand

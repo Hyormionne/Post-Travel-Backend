@@ -16,14 +16,21 @@ lerna-debug.log*
 .DS_Store
 .idea
 
+# Editor
+.vscode/
+*.swp
+*.swo
+
 # Tests
 /coverage
 /.nyc_output
+junit.xml
+test-results/
 
 # Environment
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Prisma 7 generated client (run `pnpm prisma:generate` after clone)
 /generated

@@ -80,9 +80,14 @@ export class AuthService {
     await this.tokens.blacklistRefresh(payload.jti, remainingTtl);
   }
 
-  async googleLogin(args: GoogleLoginArgs): Promise<TokenPair> {
+  async googleLogin(args: GoogleLoginArgs): Promise<string> {
     const user = await this.users.upsertByGoogleSub(args);
-    return this.issueTokenPair(user.id, user.email);
+    return this.tokens.issueOAuthCode({ sub: user.id, email: user.email });
+  }
+
+  async exchangeOAuthCode(code: string): Promise<TokenPair> {
+    const payload = await this.tokens.consumeOAuthCode(code);
+    return this.issueTokenPair(payload.sub, payload.email);
   }
 
   private async issueTokenPair(sub: string, email: string): Promise<TokenPair> {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
@@ -60,6 +60,20 @@ export class TokenService {
 
   isRefreshBlacklisted(jti: string): Promise<boolean> {
     return this.redis.exists(this.key(jti));
+  }
+
+  async issueOAuthCode(payload: JwtPayload): Promise<string> {
+    const code = randomUUID();
+    await this.redis.setex(`oauth:code:${code}`, 30, JSON.stringify(payload));
+    return code;
+  }
+
+  async consumeOAuthCode(code: string): Promise<JwtPayload> {
+    const key = `oauth:code:${code}`;
+    const raw = await this.redis.get(key);
+    if (!raw) throw new UnauthorizedException('Invalid or expired OAuth code');
+    await this.redis.del(key);
+    return JSON.parse(raw) as JwtPayload;
   }
 
   private key(jti: string): string {
