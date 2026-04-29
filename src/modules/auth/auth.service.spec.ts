@@ -25,6 +25,7 @@ describe('AuthService', () => {
       verifyRefreshToken: jest.fn(),
       blacklistRefresh: jest.fn(),
       isRefreshBlacklisted: jest.fn(),
+      issueOAuthCode: jest.fn().mockResolvedValue('oauth-code-abc'),
     };
     service = new AuthService(
       users as UsersService,
@@ -143,7 +144,7 @@ describe('AuthService', () => {
     );
   });
 
-  it('googleLogin upserts user and issues tokens', async () => {
+  it('googleLogin upserts user and returns oauth code', async () => {
     (users.upsertByGoogleSub as jest.Mock).mockResolvedValue({
       id: 'u2',
       email: 'g@example.com',
@@ -155,6 +156,10 @@ describe('AuthService', () => {
       profileImageUrl: 'http://img',
     });
     expect(users.upsertByGoogleSub).toHaveBeenCalled();
-    expect(result).toEqual({ accessToken: 'access', refreshToken: 'refresh' });
+    expect(tokens.issueOAuthCode).toHaveBeenCalledWith({
+      sub: 'u2',
+      email: 'g@example.com',
+    });
+    expect(result).toBe('oauth-code-abc');
   });
 });

@@ -40,6 +40,7 @@ describe('RedisService', () => {
         if (key in values) return values[key];
         throw new Error(`Config key "${key}" not found`);
       }),
+      get: jest.fn().mockReturnValue(undefined),
     } as unknown as ConfigService;
     service = new RedisService(mockConfig);
   });

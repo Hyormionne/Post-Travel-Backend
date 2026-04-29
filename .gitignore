@@ -38,8 +38,8 @@ test-results/
 # TypeScript build cache
 tsconfig.build.tsbuildinfo
 
-# Internal Plans
-/docs/superpowers/plans
+# Internal docs
+/docs
 
 # Git worktrees
 .worktrees
