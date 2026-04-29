@@ -12,5 +12,6 @@
     "^generated/(.*)$": "<rootDir>/../generated/$1"
   },
   "transformIgnorePatterns": [],
+  "resolver": "<rootDir>/jest-resolver.js",
   "setupFiles": ["<rootDir>/setup-dynamic-import.js"]
 }
