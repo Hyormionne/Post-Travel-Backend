@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # NEXT Backend
 
 여행휴유증의 Backend (NestJS 11 + Prisma 7 + PostgreSQL 16 + Redis 8).
@@ -38,3 +39,7 @@ pnpm start:dev
 - `POST /auth/signup` / `POST /auth/login` / `POST /auth/refresh` / `POST /auth/logout`
 - `GET /auth/google` / `GET /auth/google/callback`
 - Swagger UI: http://localhost:3000/docs
+=======
+# Post-Travel-Backend
+AI 여행 사진 정리 &amp; 여행 블로그 작성 모바일앱
+>>>>>>> origin/main
