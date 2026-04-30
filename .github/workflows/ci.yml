@@ -46,6 +46,10 @@ jobs:
       GOOGLE_CLIENT_SECRET: ci-client-secret
       GOOGLE_CALLBACK_URL: http://localhost:3000/auth/google/callback
       FRONTEND_URL: http://localhost:5173
+      AWS_REGION: ap-northeast-2
+      S3_BUCKET: ci-test-bucket
+      AWS_ACCESS_KEY_ID: ci-access-key
+      AWS_SECRET_ACCESS_KEY: ci-secret-key
 
     steps:
       - name: Checkout

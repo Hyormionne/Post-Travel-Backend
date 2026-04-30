@@ -19,4 +19,12 @@ export const envSchema = Joi.object({
   GOOGLE_CLIENT_SECRET: Joi.string().required(),
   GOOGLE_CALLBACK_URL: Joi.string().uri().required(),
   FRONTEND_URL: Joi.string().uri().required(),
+  AWS_REGION: Joi.string().default('ap-northeast-2'),
+  S3_BUCKET: Joi.string().required(),
+  S3_PRESIGNED_EXPIRES: Joi.number().default(300),
+  S3_MAX_PHOTO_BYTES: Joi.number().default(20971520),
+  S3_MAX_THUMB_BYTES: Joi.number().default(512000),
+  S3_ENDPOINT: Joi.string().uri().optional(),
+  AWS_ACCESS_KEY_ID: Joi.string().optional(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
 });
