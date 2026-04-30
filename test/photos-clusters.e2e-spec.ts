@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { Server } from 'node:http';
 import request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -5,6 +7,17 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from 'src/app.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { S3Service } from 'src/modules/photos/s3/s3.service';
+
+type LoginBody = { accessToken: string };
+type JwtPayload = { sub: string };
+type RoomBody = { id: string };
+type PresignedItem = {
+  photoId: string;
+  original: { url: string };
+  thumbnail: { url: string };
+};
+type PhotoBody = { id: string; uploadedBy: string };
+type ClusterBody = { id: string; title: string; dayNumber: number };
 
 const mockS3 = {
   createPresignedPhotoPost: jest.fn().mockResolvedValue({
@@ -44,26 +57,30 @@ describe('Photos + Clusters E2E', () => {
 
     prisma = app.get(PrismaService);
 
-    await request(app.getHttpServer())
+    await request(app.getHttpServer() as Server)
       .post('/auth/signup')
-      .send({ email: 'phototest@example.com', password: 'Password123!', nickname: 'PhotoTester' });
+      .send({
+        email: 'phototest@example.com',
+        password: 'Password123!',
+        nickname: 'PhotoTester',
+      });
 
-    const loginRes = await request(app.getHttpServer())
+    const loginRes = await request(app.getHttpServer() as Server)
       .post('/auth/login')
       .send({ email: 'phototest@example.com', password: 'Password123!' });
 
-    accessToken = loginRes.body.accessToken;
+    accessToken = (loginRes.body as LoginBody).accessToken;
     const decoded = JSON.parse(
       Buffer.from(accessToken.split('.')[1], 'base64').toString(),
-    );
+    ) as JwtPayload;
     userId = decoded.sub;
 
-    const roomRes = await request(app.getHttpServer())
+    const roomRes = await request(app.getHttpServer() as Server)
       .post('/rooms')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ title: 'Photo Test Room' });
 
-    roomId = roomRes.body.id;
+    roomId = (roomRes.body as RoomBody).id;
   });
 
   afterAll(async () => {
@@ -73,7 +90,7 @@ describe('Photos + Clusters E2E', () => {
   });
 
   it('POST /photos/presigned-urls — Presigned URL 2개 반환', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(app.getHttpServer() as Server)
       .post('/photos/presigned-urls')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
@@ -85,20 +102,21 @@ describe('Photos + Clusters E2E', () => {
       })
       .expect(201);
 
-    expect(res.body).toHaveLength(2);
-    expect(res.body[0]).toMatchObject({
+    const body = res.body as PresignedItem[];
+    expect(body).toHaveLength(2);
+    expect(body[0]).toMatchObject({
       photoId: expect.any(String),
       original: { url: 'https://mock-s3.example.com' },
       thumbnail: { url: 'https://mock-s3.example.com' },
     });
-    expect(mockS3.createPresignedPhotoPost).toHaveBeenCalledTimes(4); // 2 files × 2 (original+thumb)
+    expect(mockS3.createPresignedPhotoPost).toHaveBeenCalledTimes(4);
   });
 
   it('POST /photos/complete — Photo 저장 + 클러스터 생성', async () => {
     const photoId1 = crypto.randomUUID();
     const photoId2 = crypto.randomUUID();
 
-    const res = await request(app.getHttpServer())
+    const res = await request(app.getHttpServer() as Server)
       .post('/photos/complete')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
@@ -126,78 +144,79 @@ describe('Photos + Clusters E2E', () => {
       })
       .expect(201);
 
-    expect(res.body).toHaveLength(2);
-    expect(res.body[0].uploadedBy).toBe(userId);
+    const photos = res.body as PhotoBody[];
+    expect(photos).toHaveLength(2);
+    expect(photos[0].uploadedBy).toBe(userId);
 
-    // 클러스터 확인
-    const clusterRes = await request(app.getHttpServer())
+    const clusterRes = await request(app.getHttpServer() as Server)
       .get('/clusters')
       .set('Authorization', `Bearer ${accessToken}`)
       .query({ roomId })
       .expect(200);
 
-    expect(clusterRes.body).toHaveLength(2);
-    expect(clusterRes.body[0].title).toBe('Day 1');
-    expect(clusterRes.body[0].dayNumber).toBe(1);
-    expect(clusterRes.body[1].title).toBe('Day 2');
+    const clusters = clusterRes.body as ClusterBody[];
+    expect(clusters).toHaveLength(2);
+    expect(clusters[0].title).toBe('Day 1');
+    expect(clusters[0].dayNumber).toBe(1);
+    expect(clusters[1].title).toBe('Day 2');
   });
 
   it('GET /photos?roomId — 사진 목록 조회', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(app.getHttpServer() as Server)
       .get('/photos')
       .set('Authorization', `Bearer ${accessToken}`)
       .query({ roomId })
       .expect(200);
 
-    expect(res.body.length).toBeGreaterThanOrEqual(2);
+    expect((res.body as PhotoBody[]).length).toBeGreaterThanOrEqual(2);
   });
 
   it('GET /clusters/:clusterId/photos — 클러스터 내 사진', async () => {
-    const clusterRes = await request(app.getHttpServer())
+    const clusterRes = await request(app.getHttpServer() as Server)
       .get('/clusters')
       .set('Authorization', `Bearer ${accessToken}`)
       .query({ roomId })
       .expect(200);
 
-    const clusterId = clusterRes.body[0].id;
+    const clusterId = (clusterRes.body as ClusterBody[])[0].id;
 
-    const res = await request(app.getHttpServer())
+    const res = await request(app.getHttpServer() as Server)
       .get(`/clusters/${clusterId}/photos`)
       .set('Authorization', `Bearer ${accessToken}`)
       .query({ roomId })
       .expect(200);
 
-    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect((res.body as PhotoBody[]).length).toBeGreaterThanOrEqual(1);
   });
 
   it('PATCH /clusters/:clusterId — 제목 수정', async () => {
-    const clusterRes = await request(app.getHttpServer())
+    const clusterRes = await request(app.getHttpServer() as Server)
       .get('/clusters')
       .set('Authorization', `Bearer ${accessToken}`)
       .query({ roomId })
       .expect(200);
 
-    const clusterId = clusterRes.body[0].id;
+    const clusterId = (clusterRes.body as ClusterBody[])[0].id;
 
-    const res = await request(app.getHttpServer())
+    const res = await request(app.getHttpServer() as Server)
       .patch(`/clusters/${clusterId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ roomId, title: '첫째 날 - 한라산' })
       .expect(200);
 
-    expect(res.body.title).toBe('첫째 날 - 한라산');
+    expect((res.body as ClusterBody).title).toBe('첫째 날 - 한라산');
   });
 
   it('DELETE /photos/:photoId — 사진 삭제', async () => {
-    const photoRes = await request(app.getHttpServer())
+    const photoRes = await request(app.getHttpServer() as Server)
       .get('/photos')
       .set('Authorization', `Bearer ${accessToken}`)
       .query({ roomId })
       .expect(200);
 
-    const photoId = photoRes.body[0].id;
+    const photoId = (photoRes.body as PhotoBody[])[0].id;
 
-    await request(app.getHttpServer())
+    await request(app.getHttpServer() as Server)
       .delete(`/photos/${photoId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .query({ roomId })

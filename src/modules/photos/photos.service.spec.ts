@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClustersService } from 'src/modules/clusters/clusters.service';
 import { S3Service } from './s3/s3.service';
@@ -26,7 +27,9 @@ describe('PhotosService', () => {
       },
     };
     s3 = {
-      createPresignedPhotoPost: jest.fn().mockResolvedValue({ url: 'https://s3.test', fields: {} }),
+      createPresignedPhotoPost: jest
+        .fn()
+        .mockResolvedValue({ url: 'https://s3.test', fields: {} }),
       getMaxPhotoBytes: jest.fn().mockReturnValue(20971520),
       getMaxThumbBytes: jest.fn().mockReturnValue(512000),
     };
@@ -55,7 +58,12 @@ describe('PhotosService', () => {
   it('complete creates photo records and triggers clustering', async () => {
     prisma.photo.createMany.mockResolvedValue({ count: 1 });
     prisma.photo.findMany.mockResolvedValue([
-      { id: 'p1', takenAt: new Date('2025-07-15T09:00:00Z'), lat: null, lng: null },
+      {
+        id: 'p1',
+        takenAt: new Date('2025-07-15T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
     ]);
 
     await service.complete('room-1', [
@@ -73,7 +81,10 @@ describe('PhotosService', () => {
         ]),
       }),
     );
-    expect(clusters.rebuildForRoom).toHaveBeenCalledWith('room-1', expect.any(Array));
+    expect(clusters.rebuildForRoom).toHaveBeenCalledWith(
+      'room-1',
+      expect.any(Array),
+    );
   });
 
   it('findByRoom returns photos for the room', async () => {

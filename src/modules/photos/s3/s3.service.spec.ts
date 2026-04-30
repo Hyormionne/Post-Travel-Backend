@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ConfigService } from '@nestjs/config';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { S3Service } from './s3.service';
@@ -16,7 +17,11 @@ const mockConfig = {
       S3_MAX_THUMB_BYTES: 512000,
     })[key],
   get: (key: string) =>
-    ({ S3_ENDPOINT: undefined, AWS_ACCESS_KEY_ID: undefined, AWS_SECRET_ACCESS_KEY: undefined })[key],
+    ({
+      S3_ENDPOINT: undefined,
+      AWS_ACCESS_KEY_ID: undefined,
+      AWS_SECRET_ACCESS_KEY: undefined,
+    })[key],
 } as unknown as ConfigService;
 
 describe('S3Service', () => {

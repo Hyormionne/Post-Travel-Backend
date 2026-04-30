@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RoomRole } from 'generated/prisma/client';
@@ -42,8 +43,8 @@ describe('RoomsService', () => {
 
   it('create makes a room with OWNER membership', async () => {
     const roomId = 'room-1';
-    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
-      fn(prisma),
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
     );
     prisma.travelRoom.create.mockResolvedValue({ id: roomId, title: 'Trip' });
     prisma.roomMember.create.mockResolvedValue({});
@@ -57,7 +58,11 @@ describe('RoomsService', () => {
     );
     expect(prisma.roomMember.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ roomId, userId: 'user-1', role: RoomRole.OWNER }),
+        data: expect.objectContaining({
+          roomId,
+          userId: 'user-1',
+          role: RoomRole.OWNER,
+        }),
       }),
     );
     expect(result).toMatchObject({ id: roomId });
@@ -70,17 +75,24 @@ describe('RoomsService', () => {
 
   it('joinByToken throws NotFoundException if token is invalid', async () => {
     prisma.travelRoom.findFirst.mockResolvedValue(null);
-    await expect(service.joinByToken('bad-token', 'user-1')).rejects.toThrow(NotFoundException);
+    await expect(service.joinByToken('bad-token', 'user-1')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('joinByToken throws ConflictException if already a member', async () => {
     prisma.travelRoom.findFirst.mockResolvedValue({ id: 'room-1' });
     prisma.roomMember.findUnique.mockResolvedValue({ id: 'existing' });
-    await expect(service.joinByToken('valid-token', 'user-1')).rejects.toThrow(ConflictException);
+    await expect(service.joinByToken('valid-token', 'user-1')).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('isMember returns true when membership exists', async () => {
-    prisma.roomMember.findUnique.mockResolvedValue({ id: 'm1', role: RoomRole.MEMBER });
+    prisma.roomMember.findUnique.mockResolvedValue({
+      id: 'm1',
+      role: RoomRole.MEMBER,
+    });
     await expect(service.isMember('room-1', 'user-1')).resolves.toBe(true);
   });
 
@@ -91,7 +103,9 @@ describe('RoomsService', () => {
 
   it('getRole returns OWNER when user is owner', async () => {
     prisma.roomMember.findUnique.mockResolvedValue({ role: RoomRole.OWNER });
-    await expect(service.getRole('room-1', 'user-1')).resolves.toBe(RoomRole.OWNER);
+    await expect(service.getRole('room-1', 'user-1')).resolves.toBe(
+      RoomRole.OWNER,
+    );
   });
 
   it('getRole returns null when not a member', async () => {

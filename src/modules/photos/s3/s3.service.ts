@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
-import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import {
+  createPresignedPost,
+  type PresignedPostOptions,
+} from '@aws-sdk/s3-presigned-post';
+
+type ConditionEntry = NonNullable<PresignedPostOptions['Conditions']>[number];
 
 export interface PresignedPostResult {
   url: string;
@@ -30,7 +35,10 @@ export class S3Service {
       clientConfig.forcePathStyle = true;
     }
     if (keyId && secret) {
-      clientConfig.credentials = { accessKeyId: keyId, secretAccessKey: secret };
+      clientConfig.credentials = {
+        accessKeyId: keyId,
+        secretAccessKey: secret,
+      };
     }
 
     this.s3Client = new S3Client(clientConfig);
@@ -45,17 +53,20 @@ export class S3Service {
     maxBytes: number,
     contentTypes: string[],
   ): Promise<PresignedPostResult> {
+    const conditions: ConditionEntry[] = [
+      ['content-length-range', 1, maxBytes],
+      ['starts-with', '$Content-Type', 'image/'],
+    ];
+    for (const ct of contentTypes) {
+      conditions.push(['eq', '$Content-Type', ct] as ['eq', string, string]);
+    }
+
     return createPresignedPost(this.s3Client, {
       Bucket: this.bucket,
       Key: key,
       Expires: this.expires,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      Conditions: [
-        ['content-length-range', 1, maxBytes],
-        ['starts-with', '$Content-Type', 'image/'],
-        ...contentTypes.map((ct) => ['eq', '$Content-Type', ct]),
-      ] as any,
-    }) as Promise<PresignedPostResult>;
+      Conditions: conditions,
+    });
   }
 
   getMaxPhotoBytes(): number {

@@ -8,7 +8,6 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -22,7 +21,10 @@ export class PhotoCompleteItem {
   @IsString()
   s3Key: string;
 
-  @ApiProperty({ example: 'rooms/uuid-room/thumbs/uuid-photo.jpg', required: false })
+  @ApiProperty({
+    example: 'rooms/uuid-room/thumbs/uuid-photo.jpg',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   thumbnailKey?: string;
