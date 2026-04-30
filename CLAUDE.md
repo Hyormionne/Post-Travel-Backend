@@ -15,6 +15,17 @@ pnpm prisma:generate   # always run after schema changes (includes ESM patch)
 **Jest 주의:** `--testPathPattern` (단수)는 deprecated. 반드시 `--testPathPatterns` (복수) 사용.
 E2E 테스트는 `test/` 디렉토리에 있으며 `pnpm test`로는 찾지 못함. 반드시 `pnpm test:e2e` 사용.
 
+## Before Committing
+
+반드시 아래 두 명령을 순서대로 실행하고 통과한 뒤 커밋할 것:
+
+```bash
+pnpm lint:check   # prettier + eslint (CI와 동일한 체크)
+pnpm typecheck
+```
+
+lint:check 실패 시 `pnpm lint` (자동 수정) 후 재확인.
+
 ## Rules
 
 **Swagger:** Every DTO field must have `@ApiProperty({ example: ... })`. Every controller method must have `@ApiOperation`, `@ApiResponse` with `schema: { example: ... }`, and the controller class must have `@ApiTags`.
