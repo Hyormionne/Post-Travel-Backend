@@ -36,8 +36,8 @@ describe('Auth (e2e)', () => {
       .expect(201);
     expect((res.body as { accessToken: string }).accessToken).toBeDefined();
     expect(
-      (res.headers['set-cookie'] as unknown as string[])?.join(''),
-    ).toMatch(/refresh_token=/);
+      (res.body as { refreshToken: string }).refreshToken,
+    ).toBeDefined();
   });
 
   it('POST /auth/signup → 409 on duplicate email', async () => {
