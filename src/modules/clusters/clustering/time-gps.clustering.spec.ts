@@ -7,9 +7,24 @@ describe('clusterByTimeGps', () => {
 
   it('groups photos by calendar day into Day 1, Day 2...', () => {
     const photos: PhotoInput[] = [
-      { id: 'p1', takenAt: new Date('2025-07-15T09:00:00Z'), lat: null, lng: null },
-      { id: 'p2', takenAt: new Date('2025-07-15T14:00:00Z'), lat: null, lng: null },
-      { id: 'p3', takenAt: new Date('2025-07-16T10:00:00Z'), lat: null, lng: null },
+      {
+        id: 'p1',
+        takenAt: new Date('2025-07-15T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
+      {
+        id: 'p2',
+        takenAt: new Date('2025-07-15T14:00:00Z'),
+        lat: null,
+        lng: null,
+      },
+      {
+        id: 'p3',
+        takenAt: new Date('2025-07-16T10:00:00Z'),
+        lat: null,
+        lng: null,
+      },
     ];
 
     const result = clusterByTimeGps(photos);
@@ -26,7 +41,12 @@ describe('clusterByTimeGps', () => {
   it('puts photos without takenAt into Uncategorized group', () => {
     const photos: PhotoInput[] = [
       { id: 'p1', takenAt: null, lat: null, lng: null },
-      { id: 'p2', takenAt: new Date('2025-07-15T09:00:00Z'), lat: null, lng: null },
+      {
+        id: 'p2',
+        takenAt: new Date('2025-07-15T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
     ];
 
     const result = clusterByTimeGps(photos);
@@ -41,9 +61,24 @@ describe('clusterByTimeGps', () => {
 
   it('assigns dayNumbers in chronological order regardless of input order', () => {
     const photos: PhotoInput[] = [
-      { id: 'p1', takenAt: new Date('2025-07-17T09:00:00Z'), lat: null, lng: null },
-      { id: 'p2', takenAt: new Date('2025-07-15T09:00:00Z'), lat: null, lng: null },
-      { id: 'p3', takenAt: new Date('2025-07-16T09:00:00Z'), lat: null, lng: null },
+      {
+        id: 'p1',
+        takenAt: new Date('2025-07-17T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
+      {
+        id: 'p2',
+        takenAt: new Date('2025-07-15T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
+      {
+        id: 'p3',
+        takenAt: new Date('2025-07-16T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
     ];
 
     const result = clusterByTimeGps(photos);

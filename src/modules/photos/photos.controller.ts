@@ -27,8 +27,16 @@ import { CompleteUploadDto } from './dto/complete-upload.dto';
 const PRESIGNED_EXAMPLE = [
   {
     photoId: 'uuid-photo',
-    original: { url: 'https://bucket.s3.amazonaws.com', fields: { key: 'rooms/r1/photos/p1.jpg', policy: '...' }, key: 'rooms/r1/photos/p1.jpg' },
-    thumbnail: { url: 'https://bucket.s3.amazonaws.com', fields: { key: 'rooms/r1/thumbs/p1.jpg', policy: '...' }, key: 'rooms/r1/thumbs/p1.jpg' },
+    original: {
+      url: 'https://bucket.s3.amazonaws.com',
+      fields: { key: 'rooms/r1/photos/p1.jpg', policy: '...' },
+      key: 'rooms/r1/photos/p1.jpg',
+    },
+    thumbnail: {
+      url: 'https://bucket.s3.amazonaws.com',
+      fields: { key: 'rooms/r1/thumbs/p1.jpg', policy: '...' },
+      key: 'rooms/r1/thumbs/p1.jpg',
+    },
   },
 ];
 
@@ -57,18 +65,27 @@ export class PhotosController {
   constructor(private readonly photos: PhotosService) {}
 
   @ApiOperation({ summary: 'S3 Presigned POST URL 요청 (방 멤버 전용)' })
-  @ApiResponse({ status: 201, description: 'Presigned URL 목록 반환', schema: { example: PRESIGNED_EXAMPLE } })
+  @ApiResponse({
+    status: 201,
+    description: 'Presigned URL 목록 반환',
+    schema: { example: PRESIGNED_EXAMPLE },
+  })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @UseGuards(RoomMemberGuard)
   @Post('presigned-urls')
-  async requestPresignedUrls(
-    @Body() dto: RequestPresignedDto,
-  ) {
+  async requestPresignedUrls(@Body() dto: RequestPresignedDto) {
     return this.photos.generatePresignedUrls(dto.roomId, dto.files);
   }
 
-  @ApiOperation({ summary: '사진 업로드 완료 알림 — Photo DB 저장 + 클러스터링 (방 멤버 전용)' })
-  @ApiResponse({ status: 201, description: '저장 완료, 클러스터링 완료', schema: { example: [PHOTO_EXAMPLE] } })
+  @ApiOperation({
+    summary:
+      '사진 업로드 완료 알림 — Photo DB 저장 + 클러스터링 (방 멤버 전용)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: '저장 완료, 클러스터링 완료',
+    schema: { example: [PHOTO_EXAMPLE] },
+  })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @UseGuards(RoomMemberGuard)
   @Post('complete')
@@ -81,7 +98,11 @@ export class PhotosController {
 
   @ApiOperation({ summary: '방의 사진 목록 조회 (방 멤버 전용)' })
   @ApiQuery({ name: 'roomId', required: true, example: 'uuid-room' })
-  @ApiResponse({ status: 200, description: '사진 목록', schema: { example: [PHOTO_EXAMPLE] } })
+  @ApiResponse({
+    status: 200,
+    description: '사진 목록',
+    schema: { example: [PHOTO_EXAMPLE] },
+  })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @UseGuards(RoomMemberGuard)
   @Get()
@@ -89,7 +110,9 @@ export class PhotosController {
     return this.photos.findByRoom(roomId);
   }
 
-  @ApiOperation({ summary: '사진 삭제 (방 멤버 전용, roomId 쿼리 파라미터 필수)' })
+  @ApiOperation({
+    summary: '사진 삭제 (방 멤버 전용, roomId 쿼리 파라미터 필수)',
+  })
   @ApiQuery({ name: 'roomId', required: true, example: 'uuid-room' })
   @ApiResponse({ status: 204, description: '삭제 성공' })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })

@@ -7,7 +7,10 @@ import { clusterByTimeGps, PhotoInput } from './clustering/time-gps.clustering';
 export class ClustersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async rebuildForRoom(roomId: string, photos: PhotoInput[]): Promise<Cluster[]> {
+  async rebuildForRoom(
+    roomId: string,
+    photos: PhotoInput[],
+  ): Promise<Cluster[]> {
     const groups = clusterByTimeGps(photos);
 
     return this.prisma.$transaction(async (tx) => {

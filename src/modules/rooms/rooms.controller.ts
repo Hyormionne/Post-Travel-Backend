@@ -29,7 +29,15 @@ const ROOM_EXAMPLE = {
   inviteToken: 'uuid-token',
   createdBy: 'uuid-user',
   createdAt: '2025-07-01T00:00:00.000Z',
-  members: [{ id: 'uuid-member', roomId: 'uuid-room', userId: 'uuid-user', role: 'OWNER', joinedAt: '2025-07-01T00:00:00.000Z' }],
+  members: [
+    {
+      id: 'uuid-member',
+      roomId: 'uuid-room',
+      userId: 'uuid-user',
+      role: 'OWNER',
+      joinedAt: '2025-07-01T00:00:00.000Z',
+    },
+  ],
 };
 
 @ApiTags('rooms')
@@ -39,7 +47,11 @@ export class RoomsController {
   constructor(private readonly rooms: RoomsService) {}
 
   @ApiOperation({ summary: 'Travel Room 생성' })
-  @ApiResponse({ status: 201, description: '생성 성공', schema: { example: ROOM_EXAMPLE } })
+  @ApiResponse({
+    status: 201,
+    description: '생성 성공',
+    schema: { example: ROOM_EXAMPLE },
+  })
   @Post()
   async createRoom(
     @Body() dto: CreateRoomDto,
@@ -49,7 +61,19 @@ export class RoomsController {
   }
 
   @ApiOperation({ summary: '초대 토큰으로 방 참가 (JWT 필수)' })
-  @ApiResponse({ status: 200, description: '참가 성공', schema: { example: { id: 'uuid-member', roomId: 'uuid-room', userId: 'uuid-user', role: 'MEMBER', joinedAt: '2025-07-01T00:00:00.000Z' } } })
+  @ApiResponse({
+    status: 200,
+    description: '참가 성공',
+    schema: {
+      example: {
+        id: 'uuid-member',
+        roomId: 'uuid-room',
+        userId: 'uuid-user',
+        role: 'MEMBER',
+        joinedAt: '2025-07-01T00:00:00.000Z',
+      },
+    },
+  })
   @ApiResponse({ status: 404, description: '유효하지 않은 토큰' })
   @ApiResponse({ status: 409, description: '이미 멤버' })
   @Get('join/:token')
@@ -61,7 +85,11 @@ export class RoomsController {
   }
 
   @ApiOperation({ summary: 'Room 상세 조회 (방 멤버 전용)' })
-  @ApiResponse({ status: 200, description: '조회 성공', schema: { example: ROOM_EXAMPLE } })
+  @ApiResponse({
+    status: 200,
+    description: '조회 성공',
+    schema: { example: ROOM_EXAMPLE },
+  })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @ApiResponse({ status: 404, description: '방 없음' })
   @UseGuards(RoomMemberGuard)
@@ -83,7 +111,11 @@ export class RoomsController {
   }
 
   @ApiOperation({ summary: '초대 토큰 재발급 (OWNER 전용)' })
-  @ApiResponse({ status: 201, description: '재발급 성공', schema: { example: { inviteToken: 'new-uuid-token' } } })
+  @ApiResponse({
+    status: 201,
+    description: '재발급 성공',
+    schema: { example: { inviteToken: 'new-uuid-token' } },
+  })
   @ApiResponse({ status: 403, description: 'OWNER 아님' })
   @UseGuards(RoomOwnerGuard)
   @Post(':roomId/invite-token')

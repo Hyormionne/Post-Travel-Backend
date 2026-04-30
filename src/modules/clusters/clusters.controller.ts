@@ -44,7 +44,11 @@ export class ClustersController {
 
   @ApiOperation({ summary: '방의 클러스터 목록 조회 (방 멤버 전용)' })
   @ApiQuery({ name: 'roomId', required: true, example: 'uuid-room' })
-  @ApiResponse({ status: 200, description: '클러스터 목록', schema: { example: [CLUSTER_EXAMPLE] } })
+  @ApiResponse({
+    status: 200,
+    description: '클러스터 목록',
+    schema: { example: [CLUSTER_EXAMPLE] },
+  })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @UseGuards(RoomMemberGuard)
   @Get()
@@ -53,7 +57,11 @@ export class ClustersController {
   }
 
   @ApiOperation({ summary: '클러스터 제목 수정 (방 멤버 전용)' })
-  @ApiResponse({ status: 200, description: '수정 성공', schema: { example: CLUSTER_EXAMPLE } })
+  @ApiResponse({
+    status: 200,
+    description: '수정 성공',
+    schema: { example: CLUSTER_EXAMPLE },
+  })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @ApiResponse({ status: 404, description: '클러스터 없음' })
   @UseGuards(RoomMemberGuard)
@@ -65,9 +73,16 @@ export class ClustersController {
     return this.clusters.updateTitle(clusterId, dto.title);
   }
 
-  @ApiOperation({ summary: '클러스터 내 사진 목록 조회 (방 멤버 전용, roomId 쿼리 파라미터 필수)' })
+  @ApiOperation({
+    summary:
+      '클러스터 내 사진 목록 조회 (방 멤버 전용, roomId 쿼리 파라미터 필수)',
+  })
   @ApiQuery({ name: 'roomId', required: true, example: 'uuid-room' })
-  @ApiResponse({ status: 200, description: '사진 목록', schema: { example: [PHOTO_EXAMPLE] } })
+  @ApiResponse({
+    status: 200,
+    description: '사진 목록',
+    schema: { example: [PHOTO_EXAMPLE] },
+  })
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @UseGuards(RoomMemberGuard)
   @Get(':clusterId/photos')

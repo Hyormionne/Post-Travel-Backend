@@ -22,7 +22,10 @@ export class PresignedFileItem {
   @Min(1)
   size: number;
 
-  @ApiProperty({ example: 'image/jpeg', enum: ['image/jpeg', 'image/png', 'image/webp'] })
+  @ApiProperty({
+    example: 'image/jpeg',
+    enum: ['image/jpeg', 'image/png', 'image/webp'],
+  })
   @IsIn(['image/jpeg', 'image/png', 'image/webp'])
   contentType: string;
 }

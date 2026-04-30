@@ -23,7 +23,8 @@ export const BlogVisibility = {
   ROOM: 'ROOM',
   PUBLIC: 'PUBLIC',
 } as const;
-export type BlogVisibility = (typeof BlogVisibility)[keyof typeof BlogVisibility];
+export type BlogVisibility =
+  (typeof BlogVisibility)[keyof typeof BlogVisibility];
 
 export const JobStatus = {
   PENDING: 'PENDING',

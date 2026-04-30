@@ -46,8 +46,16 @@ export class PhotosService {
         const thumbKey = `rooms/${roomId}/thumbs/${photoId}.${ext}`;
 
         const [original, thumbnail] = await Promise.all([
-          this.s3.createPresignedPhotoPost(originalKey, maxPhoto, ALLOWED_CONTENT_TYPES),
-          this.s3.createPresignedPhotoPost(thumbKey, maxThumb, ALLOWED_CONTENT_TYPES),
+          this.s3.createPresignedPhotoPost(
+            originalKey,
+            maxPhoto,
+            ALLOWED_CONTENT_TYPES,
+          ),
+          this.s3.createPresignedPhotoPost(
+            thumbKey,
+            maxThumb,
+            ALLOWED_CONTENT_TYPES,
+          ),
         ]);
 
         return {

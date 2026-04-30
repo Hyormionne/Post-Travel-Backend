@@ -39,12 +39,22 @@ describe('ClustersService', () => {
 
   it('rebuildForRoom deletes old TIME_GPS clusters and creates new ones', async () => {
     const clusterPhotos = [
-      { id: 'p1', takenAt: new Date('2025-07-15T09:00:00Z'), lat: null, lng: null },
-      { id: 'p2', takenAt: new Date('2025-07-16T09:00:00Z'), lat: null, lng: null },
+      {
+        id: 'p1',
+        takenAt: new Date('2025-07-15T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
+      {
+        id: 'p2',
+        takenAt: new Date('2025-07-16T09:00:00Z'),
+        lat: null,
+        lng: null,
+      },
     ];
 
-    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
-      fn(prisma),
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
     );
     prisma.cluster.findMany.mockResolvedValue([{ id: 'old-cluster-1' }]);
     prisma.clusterPhoto.deleteMany.mockResolvedValue({ count: 1 });
@@ -64,8 +74,8 @@ describe('ClustersService', () => {
   });
 
   it('rebuildForRoom returns empty array when no photos', async () => {
-    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
-      fn(prisma),
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
     );
     prisma.cluster.findMany.mockResolvedValue([]);
     prisma.clusterPhoto.deleteMany.mockResolvedValue({ count: 0 });

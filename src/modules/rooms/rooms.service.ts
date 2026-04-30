@@ -10,10 +10,7 @@ import { RoomRole, TravelRoom, RoomMember } from 'generated/prisma/client';
 export class RoomsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(
-    userId: string,
-    title: string,
-  ): Promise<TravelRoom> {
+  async create(userId: string, title: string): Promise<TravelRoom> {
     return this.prisma.$transaction(async (tx) => {
       const room = await tx.travelRoom.create({
         data: {

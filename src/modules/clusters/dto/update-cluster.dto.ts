@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateClusterDto {
-  @ApiProperty({ example: 'uuid-room', description: 'RoomMemberGuard가 사용하는 roomId' })
+  @ApiProperty({
+    example: 'uuid-room',
+    description: 'RoomMemberGuard가 사용하는 roomId',
+  })
   @IsUUID()
   roomId: string;
 
