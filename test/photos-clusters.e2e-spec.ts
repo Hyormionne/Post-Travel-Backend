@@ -6,7 +6,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { AppModule } from 'src/app.module';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { S3Service } from 'src/modules/photos/s3/s3.service';
+import { S3Service } from 'src/s3/s3.service';
 
 type LoginBody = { accessToken: string };
 type JwtPayload = { sub: string };
@@ -26,6 +26,9 @@ const mockS3 = {
   }),
   getMaxPhotoBytes: jest.fn().mockReturnValue(20971520),
   getMaxThumbBytes: jest.fn().mockReturnValue(512000),
+  getPresignedGetUrl: jest
+    .fn()
+    .mockResolvedValue('https://mock-s3.example.com/signed'),
 };
 
 describe('Photos + Clusters E2E', () => {

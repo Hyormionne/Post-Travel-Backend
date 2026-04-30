@@ -1,11 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Cluster, ClusterType, Photo } from 'generated/prisma/client';
+import { S3Service } from 'src/s3/s3.service';
 import { clusterByTimeGps, PhotoInput } from './clustering/time-gps.clustering';
+
+type PhotoWithUrls = Photo & { url: string; thumbnailUrl: string | null };
+type ClusterWithThumbnailUrl = Cluster & { thumbnailUrl: string | null };
+
+const PHOTO_GET_URL_TTL = 86_400; // 24h
 
 @Injectable()
 export class ClustersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3: S3Service,
+  ) {}
 
   async rebuildForRoom(
     roomId: string,
@@ -55,11 +64,19 @@ export class ClustersService {
     });
   }
 
-  findByRoom(roomId: string): Promise<Cluster[]> {
-    return this.prisma.cluster.findMany({
+  async findByRoom(roomId: string): Promise<ClusterWithThumbnailUrl[]> {
+    const clusters = await this.prisma.cluster.findMany({
       where: { roomId },
       orderBy: [{ dayNumber: 'asc' }, { createdAt: 'asc' }],
     });
+    return Promise.all(
+      clusters.map(async (c) => ({
+        ...c,
+        thumbnailUrl: c.thumbnailKey
+          ? await this.s3.getPresignedGetUrl(c.thumbnailKey, PHOTO_GET_URL_TTL)
+          : null,
+      })),
+    );
   }
 
   updateTitle(clusterId: string, title: string): Promise<Cluster> {
@@ -69,11 +86,21 @@ export class ClustersService {
     });
   }
 
-  async findPhotosInCluster(clusterId: string): Promise<Photo[]> {
+  async findPhotosInCluster(clusterId: string): Promise<PhotoWithUrls[]> {
     const records = await this.prisma.clusterPhoto.findMany({
       where: { clusterId },
       include: { photo: true },
     });
-    return records.map((r) => r.photo);
+    return Promise.all(records.map((r) => this.photoWithUrls(r.photo)));
+  }
+
+  private async photoWithUrls(photo: Photo): Promise<PhotoWithUrls> {
+    const [url, thumbnailUrl] = await Promise.all([
+      this.s3.getPresignedGetUrl(photo.s3Key, PHOTO_GET_URL_TTL),
+      photo.thumbnailKey
+        ? this.s3.getPresignedGetUrl(photo.thumbnailKey, PHOTO_GET_URL_TTL)
+        : Promise.resolve(null),
+    ]);
+    return { ...photo, url, thumbnailUrl };
   }
 }
