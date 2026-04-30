@@ -3,11 +3,13 @@ import { AuthService } from './auth.service';
 import { UsersService } from 'src/modules/users/users.service';
 import { PasswordService } from './password/password.service';
 import { TokenService } from './tokens/token.service';
+import { GoogleAuthService } from './google/google-auth.service';
 
 describe('AuthService', () => {
   let users: jest.Mocked<Partial<UsersService>>;
   let passwords: jest.Mocked<Partial<PasswordService>>;
   let tokens: jest.Mocked<Partial<TokenService>>;
+  let googleAuth: jest.Mocked<Partial<GoogleAuthService>>;
   let service: AuthService;
 
   beforeEach(() => {
@@ -25,12 +27,13 @@ describe('AuthService', () => {
       verifyRefreshToken: jest.fn(),
       blacklistRefresh: jest.fn(),
       isRefreshBlacklisted: jest.fn(),
-      issueOAuthCode: jest.fn().mockResolvedValue('oauth-code-abc'),
     };
+    googleAuth = { verify: jest.fn() };
     service = new AuthService(
       users as UsersService,
       passwords as PasswordService,
       tokens as TokenService,
+      googleAuth as GoogleAuthService,
     );
   });
 
@@ -144,22 +147,36 @@ describe('AuthService', () => {
     );
   });
 
-  it('googleLogin upserts user and returns oauth code', async () => {
-    (users.upsertByGoogleSub as jest.Mock).mockResolvedValue({
-      id: 'u2',
-      email: 'g@example.com',
-    });
-    const result = await service.googleLogin({
+  it('loginWithGoogleIdToken verifies token, upserts user, and issues tokens', async () => {
+    (googleAuth.verify as jest.Mock).mockResolvedValue({
       googleSub: 'g-123',
       email: 'g@example.com',
       nickname: 'gUser',
       profileImageUrl: 'http://img',
     });
-    expect(users.upsertByGoogleSub).toHaveBeenCalled();
-    expect(tokens.issueOAuthCode).toHaveBeenCalledWith({
-      sub: 'u2',
+    (users.upsertByGoogleSub as jest.Mock).mockResolvedValue({
+      id: 'u2',
       email: 'g@example.com',
     });
-    expect(result).toBe('oauth-code-abc');
+
+    const result = await service.loginWithGoogleIdToken('id-token');
+
+    expect(googleAuth.verify).toHaveBeenCalledWith('id-token');
+    expect(users.upsertByGoogleSub).toHaveBeenCalledWith({
+      googleSub: 'g-123',
+      email: 'g@example.com',
+      nickname: 'gUser',
+      profileImageUrl: 'http://img',
+    });
+    expect(result).toEqual({ accessToken: 'access', refreshToken: 'refresh' });
+  });
+
+  it('loginWithGoogleIdToken propagates UnauthorizedException from GoogleAuthService', async () => {
+    (googleAuth.verify as jest.Mock).mockRejectedValue(
+      new UnauthorizedException('Invalid Google idToken'),
+    );
+    await expect(
+      service.loginWithGoogleIdToken('bad-token'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

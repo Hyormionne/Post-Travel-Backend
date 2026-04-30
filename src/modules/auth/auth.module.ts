@@ -10,7 +10,7 @@ import { PasswordService } from './password/password.service';
 import { TokenService } from './tokens/token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
+import { GoogleAuthService } from './google/google-auth.service';
 
 @Module({
   imports: [UsersModule, PassportModule, JwtModule.register({})],
@@ -21,7 +21,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
     TokenService,
     JwtStrategy,
     JwtRefreshStrategy,
-    GoogleStrategy,
+    GoogleAuthService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
   exports: [AuthService],

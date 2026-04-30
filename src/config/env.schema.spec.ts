@@ -13,9 +13,6 @@ describe('envSchema', () => {
       JWT_ACCESS_EXPIRES: '1h',
       JWT_REFRESH_EXPIRES: '14d',
       GOOGLE_CLIENT_ID: 'client-id',
-      GOOGLE_CLIENT_SECRET: 'client-secret',
-      GOOGLE_CALLBACK_URL: 'http://localhost:3000/auth/google/callback',
-      FRONTEND_URL: 'http://localhost:5173',
       S3_BUCKET: 'test-bucket',
     }) as { error: Error | undefined; value: { PORT: number } };
     expect(error).toBeUndefined();
@@ -30,9 +27,6 @@ describe('envSchema', () => {
         JWT_ACCESS_SECRET: 'a'.repeat(32),
         JWT_REFRESH_SECRET: 'b'.repeat(32),
         GOOGLE_CLIENT_ID: 'client-id',
-        GOOGLE_CLIENT_SECRET: 'client-secret',
-        GOOGLE_CALLBACK_URL: 'http://localhost:3000/auth/google/callback',
-        FRONTEND_URL: 'http://localhost:5173',
       },
       { abortEarly: false },
     );
@@ -48,9 +42,6 @@ describe('envSchema', () => {
         JWT_ACCESS_SECRET: 'short',
         JWT_REFRESH_SECRET: 'b'.repeat(32),
         GOOGLE_CLIENT_ID: 'x',
-        GOOGLE_CLIENT_SECRET: 'y',
-        GOOGLE_CALLBACK_URL: 'http://localhost:3000/cb',
-        FRONTEND_URL: 'http://localhost:5173',
       },
       { abortEarly: false },
     );

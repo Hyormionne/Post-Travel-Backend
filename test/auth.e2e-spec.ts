@@ -35,9 +35,7 @@ describe('Auth (e2e)', () => {
       .send({ email, password: 'password1234', nickname: 'e2e' })
       .expect(201);
     expect((res.body as { accessToken: string }).accessToken).toBeDefined();
-    expect(
-      (res.headers['set-cookie'] as unknown as string[])?.join(''),
-    ).toMatch(/refresh_token=/);
+    expect((res.body as { refreshToken: string }).refreshToken).toBeDefined();
   });
 
   it('POST /auth/signup → 409 on duplicate email', async () => {
