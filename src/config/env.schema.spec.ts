@@ -16,6 +16,7 @@ describe('envSchema', () => {
       GOOGLE_CLIENT_SECRET: 'client-secret',
       GOOGLE_CALLBACK_URL: 'http://localhost:3000/auth/google/callback',
       FRONTEND_URL: 'http://localhost:5173',
+      S3_BUCKET: 'test-bucket',
     }) as { error: Error | undefined; value: { PORT: number } };
     expect(error).toBeUndefined();
     expect(value.PORT).toBe(3000);

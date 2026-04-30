@@ -6,10 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pnpm start:dev
-pnpm test --testPathPattern=<file>
+pnpm test --testPathPatterns=<file>         # unit tests (src/ only, *.spec.ts)
+pnpm test:e2e --testPathPatterns=<file>     # e2e tests (test/ dir, *.e2e-spec.ts)
 pnpm typecheck
 pnpm prisma:generate   # always run after schema changes (includes ESM patch)
 ```
+
+**Jest 주의:** `--testPathPattern` (단수)는 deprecated. 반드시 `--testPathPatterns` (복수) 사용.
+E2E 테스트는 `test/` 디렉토리에 있으며 `pnpm test`로는 찾지 못함. 반드시 `pnpm test:e2e` 사용.
 
 ## Rules
 
