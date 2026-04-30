@@ -6,6 +6,7 @@ import {
 import { UsersService } from 'src/modules/users/users.service';
 import { PasswordService } from './password/password.service';
 import { TokenService } from './tokens/token.service';
+import { GoogleAuthService } from './google/google-auth.service';
 
 export interface SignupArgs {
   email: string;
@@ -16,13 +17,6 @@ export interface SignupArgs {
 export interface LoginArgs {
   email: string;
   password: string;
-}
-
-export interface GoogleLoginArgs {
-  googleSub: string;
-  email: string;
-  nickname: string;
-  profileImageUrl?: string;
 }
 
 export interface TokenPair {
@@ -36,6 +30,7 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
+    private readonly googleAuth: GoogleAuthService,
   ) {}
 
   async signup(args: SignupArgs): Promise<TokenPair> {
@@ -80,14 +75,10 @@ export class AuthService {
     await this.tokens.blacklistRefresh(payload.jti, remainingTtl);
   }
 
-  async googleLogin(args: GoogleLoginArgs): Promise<string> {
-    const user = await this.users.upsertByGoogleSub(args);
-    return this.tokens.issueOAuthCode({ sub: user.id, email: user.email });
-  }
-
-  async exchangeOAuthCode(code: string): Promise<TokenPair> {
-    const payload = await this.tokens.consumeOAuthCode(code);
-    return this.issueTokenPair(payload.sub, payload.email);
+  async loginWithGoogleIdToken(idToken: string): Promise<TokenPair> {
+    const profile = await this.googleAuth.verify(idToken);
+    const user = await this.users.upsertByGoogleSub(profile);
+    return this.issueTokenPair(user.id, user.email);
   }
 
   private async issueTokenPair(sub: string, email: string): Promise<TokenPair> {
