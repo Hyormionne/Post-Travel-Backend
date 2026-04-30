@@ -1,5 +1,6 @@
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClusterType } from 'generated/prisma/client';
+import { S3Service } from 'src/s3/s3.service';
 import { ClustersService } from './clusters.service';
 
 describe('ClustersService', () => {
@@ -17,6 +18,7 @@ describe('ClustersService', () => {
     };
     $transaction: jest.Mock;
   };
+  let s3: jest.Mocked<Partial<S3Service>>;
   let service: ClustersService;
 
   beforeEach(() => {
@@ -34,7 +36,15 @@ describe('ClustersService', () => {
       },
       $transaction: jest.fn(),
     };
-    service = new ClustersService(prisma as unknown as PrismaService);
+    s3 = {
+      getPresignedGetUrl: jest
+        .fn()
+        .mockResolvedValue('https://signed.test/photo'),
+    };
+    service = new ClustersService(
+      prisma as unknown as PrismaService,
+      s3 as S3Service,
+    );
   });
 
   it('rebuildForRoom deletes old TIME_GPS clusters and creates new ones', async () => {
@@ -86,13 +96,29 @@ describe('ClustersService', () => {
     expect(prisma.cluster.create).not.toHaveBeenCalled();
   });
 
-  it('findByRoom returns clusters for the room', async () => {
-    prisma.cluster.findMany.mockResolvedValue([{ id: 'c1' }]);
+  it('findByRoom returns clusters with thumbnailUrl null when thumbnailKey is null', async () => {
+    prisma.cluster.findMany.mockResolvedValue([
+      { id: 'c1', thumbnailKey: null },
+    ]);
+
     const result = await service.findByRoom('room-1');
-    expect(prisma.cluster.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { roomId: 'room-1' } }),
+
+    expect(result[0]).toMatchObject({ id: 'c1', thumbnailUrl: null });
+    expect(s3.getPresignedGetUrl).not.toHaveBeenCalled();
+  });
+
+  it('findByRoom returns clusters with thumbnailUrl when thumbnailKey exists', async () => {
+    prisma.cluster.findMany.mockResolvedValue([
+      { id: 'c1', thumbnailKey: 'rooms/r1/clusters/c1.jpg' },
+    ]);
+
+    const result = await service.findByRoom('room-1');
+
+    expect(result[0].thumbnailUrl).toBe('https://signed.test/photo');
+    expect(s3.getPresignedGetUrl).toHaveBeenCalledWith(
+      'rooms/r1/clusters/c1.jpg',
+      86400,
     );
-    expect(result).toHaveLength(1);
   });
 
   it('updateTitle updates cluster title', async () => {
@@ -102,5 +128,43 @@ describe('ClustersService', () => {
       where: { id: 'c1' },
       data: { title: 'New Title' },
     });
+  });
+
+  it('findPhotosInCluster returns photos with url and thumbnailUrl', async () => {
+    prisma.clusterPhoto.findMany.mockResolvedValue([
+      {
+        photo: {
+          id: 'p1',
+          s3Key: 'rooms/r1/photos/p1.jpg',
+          thumbnailKey: 'rooms/r1/thumbs/p1.jpg',
+        },
+      },
+    ]);
+
+    const result = await service.findPhotosInCluster('c1');
+
+    expect(result[0]).toMatchObject({
+      id: 'p1',
+      url: 'https://signed.test/photo',
+      thumbnailUrl: 'https://signed.test/photo',
+    });
+    expect(s3.getPresignedGetUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('findPhotosInCluster sets thumbnailUrl null when thumbnailKey is null', async () => {
+    prisma.clusterPhoto.findMany.mockResolvedValue([
+      {
+        photo: {
+          id: 'p1',
+          s3Key: 'rooms/r1/photos/p1.jpg',
+          thumbnailKey: null,
+        },
+      },
+    ]);
+
+    const result = await service.findPhotosInCluster('c1');
+
+    expect(result[0].thumbnailUrl).toBeNull();
+    expect(s3.getPresignedGetUrl).toHaveBeenCalledTimes(1);
   });
 });

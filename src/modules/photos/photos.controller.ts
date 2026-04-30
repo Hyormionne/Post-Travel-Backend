@@ -56,6 +56,9 @@ const PHOTO_EXAMPLE = {
   aiCaption: null,
   aiKeywords: [],
   createdAt: '2025-07-15T10:35:00.000Z',
+  url: 'https://bucket.s3.amazonaws.com/rooms/uuid-room/photos/uuid-photo.jpg?X-Amz-Signature=...',
+  thumbnailUrl:
+    'https://bucket.s3.amazonaws.com/rooms/uuid-room/thumbs/uuid-photo.jpg?X-Amz-Signature=...',
 };
 
 @ApiTags('photos')

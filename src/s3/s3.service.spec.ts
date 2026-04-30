@@ -1,10 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ConfigService } from '@nestjs/config';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3Service } from './s3.service';
 
 jest.mock('@aws-sdk/s3-presigned-post', () => ({
   createPresignedPost: jest.fn(),
+}));
+
+jest.mock('@aws-sdk/s3-request-presigner', () => ({
+  getSignedUrl: jest.fn(),
 }));
 
 const mockConfig = {
@@ -56,6 +61,24 @@ describe('S3Service', () => {
           ['content-length-range', 1, 20971520],
         ]),
       }),
+    );
+  });
+
+  it('getPresignedGetUrl returns signed URL', async () => {
+    (getSignedUrl as jest.Mock).mockResolvedValue(
+      'https://signed.example.com/photo',
+    );
+
+    const result = await service.getPresignedGetUrl(
+      'rooms/r1/photos/p1.jpg',
+      86400,
+    );
+
+    expect(result).toBe('https://signed.example.com/photo');
+    expect(getSignedUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { expiresIn: 86400 },
     );
   });
 });

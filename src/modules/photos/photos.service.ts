@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClustersService } from 'src/modules/clusters/clusters.service';
 import { Photo } from 'generated/prisma/client';
-import { S3Service, PresignedPostResult } from './s3/s3.service';
+import { S3Service, PresignedPostResult } from 'src/s3/s3.service';
 import type { PresignedFileItem } from './dto/request-presigned.dto';
 import type { PhotoCompleteItem } from './dto/complete-upload.dto';
 
@@ -12,7 +12,13 @@ export interface PresignedUrlItem {
   thumbnail: PresignedPostResult & { key: string };
 }
 
+export type PhotoWithUrls = Photo & {
+  url: string;
+  thumbnailUrl: string | null;
+};
+
 const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PHOTO_GET_URL_TTL = 86_400; // 24h
 
 function extFromContentType(ct: string): string {
   const map: Record<string, string> = {
@@ -71,7 +77,7 @@ export class PhotosService {
     roomId: string,
     photos: PhotoCompleteItem[],
     uploadedBy?: string,
-  ): Promise<Photo[]> {
+  ): Promise<PhotoWithUrls[]> {
     await this.prisma.photo.createMany({
       data: photos.map((p) => ({
         id: p.photoId,
@@ -97,20 +103,33 @@ export class PhotosService {
 
     await this.clusters.rebuildForRoom(roomId, allPhotos);
 
-    return this.prisma.photo.findMany({
+    const saved = await this.prisma.photo.findMany({
       where: { id: { in: photos.map((p) => p.photoId) } },
       orderBy: { createdAt: 'asc' },
     });
+
+    return Promise.all(saved.map((p) => this.withUrls(p)));
   }
 
-  findByRoom(roomId: string): Promise<Photo[]> {
-    return this.prisma.photo.findMany({
+  async findByRoom(roomId: string): Promise<PhotoWithUrls[]> {
+    const photos = await this.prisma.photo.findMany({
       where: { roomId },
       orderBy: { takenAt: 'asc' },
     });
+    return Promise.all(photos.map((p) => this.withUrls(p)));
   }
 
   async deletePhoto(photoId: string): Promise<void> {
     await this.prisma.photo.delete({ where: { id: photoId } });
+  }
+
+  private async withUrls(photo: Photo): Promise<PhotoWithUrls> {
+    const [url, thumbnailUrl] = await Promise.all([
+      this.s3.getPresignedGetUrl(photo.s3Key, PHOTO_GET_URL_TTL),
+      photo.thumbnailKey
+        ? this.s3.getPresignedGetUrl(photo.thumbnailKey, PHOTO_GET_URL_TTL)
+        : Promise.resolve(null),
+    ]);
+    return { ...photo, url, thumbnailUrl };
   }
 }

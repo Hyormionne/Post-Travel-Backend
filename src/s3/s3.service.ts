@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
 import {
-  createPresignedPost,
-  type PresignedPostOptions,
-} from '@aws-sdk/s3-presigned-post';
-
-type ConditionEntry = NonNullable<PresignedPostOptions['Conditions']>[number];
+  GetObjectCommand,
+  S3Client,
+  type S3ClientConfig,
+} from '@aws-sdk/client-s3';
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export interface PresignedPostResult {
   url: string;
@@ -53,20 +53,26 @@ export class S3Service {
     maxBytes: number,
     contentTypes: string[],
   ): Promise<PresignedPostResult> {
-    const conditions: ConditionEntry[] = [
-      ['content-length-range', 1, maxBytes],
-      ['starts-with', '$Content-Type', 'image/'],
-    ];
-    for (const ct of contentTypes) {
-      conditions.push(['eq', '$Content-Type', ct] as ['eq', string, string]);
-    }
-
     return createPresignedPost(this.s3Client, {
       Bucket: this.bucket,
       Key: key,
       Expires: this.expires,
-      Conditions: conditions,
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      Conditions: [
+        ['content-length-range', 1, maxBytes],
+        ['starts-with', '$Content-Type', 'image/'],
+        ...contentTypes.map((ct) => ['eq', '$Content-Type', ct]),
+      ] as any,
     });
+  }
+
+  getPresignedGetUrl(key: string, ttlSeconds: number): Promise<string> {
+    return getSignedUrl(
+      this.s3Client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      { expiresIn: ttlSeconds },
+    );
   }
 
   getMaxPhotoBytes(): number {

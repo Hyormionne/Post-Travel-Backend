@@ -28,12 +28,17 @@ const CLUSTER_EXAMPLE = {
   clusterType: 'TIME_GPS',
   thumbnailKey: null,
   createdAt: '2025-07-15T10:35:00.000Z',
+  thumbnailUrl: null,
 };
 
 const PHOTO_EXAMPLE = {
   id: 'uuid-photo',
   s3Key: 'rooms/uuid-room/photos/uuid-photo.jpg',
+  thumbnailKey: 'rooms/uuid-room/thumbs/uuid-photo.jpg',
   takenAt: '2025-07-15T10:30:00.000Z',
+  url: 'https://bucket.s3.amazonaws.com/rooms/uuid-room/photos/uuid-photo.jpg?X-Amz-Signature=...',
+  thumbnailUrl:
+    'https://bucket.s3.amazonaws.com/rooms/uuid-room/thumbs/uuid-photo.jpg?X-Amz-Signature=...',
 };
 
 @ApiTags('clusters')
