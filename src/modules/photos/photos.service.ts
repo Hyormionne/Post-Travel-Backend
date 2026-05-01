@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClustersService } from 'src/modules/clusters/clusters.service';
 import { Photo } from 'generated/prisma/client';
-import { S3Service, PresignedPostResult } from 'src/s3/s3.service';
+import { S3Service } from 'src/s3/s3.service';
 import type { PresignedFileItem } from './dto/request-presigned.dto';
 import type { PhotoCompleteItem } from './dto/complete-upload.dto';
 
 export interface PresignedUrlItem {
   photoId: string;
-  original: PresignedPostResult & { key: string };
-  thumbnail: PresignedPostResult & { key: string };
+  original: { url: string; key: string };
+  thumbnail: { url: string; key: string };
 }
 
 export type PhotoWithUrls = Photo & {
@@ -17,7 +17,6 @@ export type PhotoWithUrls = Photo & {
   thumbnailUrl: string | null;
 };
 
-const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const PHOTO_GET_URL_TTL = 86_400; // 24h
 
 function extFromContentType(ct: string): string {
@@ -41,9 +40,6 @@ export class PhotosService {
     roomId: string,
     files: PresignedFileItem[],
   ): Promise<PresignedUrlItem[]> {
-    const maxPhoto = this.s3.getMaxPhotoBytes();
-    const maxThumb = this.s3.getMaxThumbBytes();
-
     return Promise.all(
       files.map(async (file) => {
         const photoId = crypto.randomUUID();
@@ -51,23 +47,15 @@ export class PhotosService {
         const originalKey = `rooms/${roomId}/photos/${photoId}.${ext}`;
         const thumbKey = `rooms/${roomId}/thumbs/${photoId}.${ext}`;
 
-        const [original, thumbnail] = await Promise.all([
-          this.s3.createPresignedPhotoPost(
-            originalKey,
-            maxPhoto,
-            ALLOWED_CONTENT_TYPES,
-          ),
-          this.s3.createPresignedPhotoPost(
-            thumbKey,
-            maxThumb,
-            ALLOWED_CONTENT_TYPES,
-          ),
+        const [originalUrl, thumbnailUrl] = await Promise.all([
+          this.s3.createPresignedPutUrl(originalKey, file.contentType),
+          this.s3.createPresignedPutUrl(thumbKey, file.contentType),
         ]);
 
         return {
           photoId,
-          original: { ...original, key: originalKey },
-          thumbnail: { ...thumbnail, key: thumbKey },
+          original: { url: originalUrl, key: originalKey },
+          thumbnail: { url: thumbnailUrl, key: thumbKey },
         };
       }),
     );

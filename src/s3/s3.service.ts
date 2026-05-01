@@ -2,16 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   GetObjectCommand,
+  PutObjectCommand,
   S3Client,
   type S3ClientConfig,
 } from '@aws-sdk/client-s3';
-import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-export interface PresignedPostResult {
-  url: string;
-  fields: Record<string, string>;
-}
 
 @Injectable()
 export class S3Service {
@@ -41,30 +36,27 @@ export class S3Service {
       };
     }
 
-    this.s3Client = new S3Client(clientConfig);
+    this.s3Client = new S3Client({
+      ...clientConfig,
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
+    });
     this.bucket = config.getOrThrow<string>('S3_BUCKET');
     this.expires = config.getOrThrow<number>('S3_PRESIGNED_EXPIRES');
     this.maxPhotoBytes = config.getOrThrow<number>('S3_MAX_PHOTO_BYTES');
     this.maxThumbBytes = config.getOrThrow<number>('S3_MAX_THUMB_BYTES');
   }
 
-  createPresignedPhotoPost(
-    key: string,
-    maxBytes: number,
-    contentTypes: string[],
-  ): Promise<PresignedPostResult> {
-    return createPresignedPost(this.s3Client, {
-      Bucket: this.bucket,
-      Key: key,
-      Expires: this.expires,
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      Conditions: [
-        ['content-length-range', 1, maxBytes],
-        ['starts-with', '$Content-Type', 'image/'],
-        ...contentTypes.map((ct) => ['eq', '$Content-Type', ct]),
-      ] as any,
-    });
+  createPresignedPutUrl(key: string, contentType: string): Promise<string> {
+    return getSignedUrl(
+      this.s3Client,
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ContentType: contentType,
+      }),
+      { expiresIn: this.expires },
+    );
   }
 
   getPresignedGetUrl(key: string, ttlSeconds: number): Promise<string> {

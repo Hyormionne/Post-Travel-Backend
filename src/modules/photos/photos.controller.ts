@@ -28,13 +28,11 @@ const PRESIGNED_EXAMPLE = [
   {
     photoId: 'uuid-photo',
     original: {
-      url: 'https://bucket.s3.amazonaws.com',
-      fields: { key: 'rooms/r1/photos/p1.jpg', policy: '...' },
+      url: 'https://bucket.s3.amazonaws.com/rooms/r1/photos/p1.jpg?X-Amz-Signature=...',
       key: 'rooms/r1/photos/p1.jpg',
     },
     thumbnail: {
-      url: 'https://bucket.s3.amazonaws.com',
-      fields: { key: 'rooms/r1/thumbs/p1.jpg', policy: '...' },
+      url: 'https://bucket.s3.amazonaws.com/rooms/r1/thumbs/p1.jpg?X-Amz-Signature=...',
       key: 'rooms/r1/thumbs/p1.jpg',
     },
   },
@@ -67,7 +65,7 @@ const PHOTO_EXAMPLE = {
 export class PhotosController {
   constructor(private readonly photos: PhotosService) {}
 
-  @ApiOperation({ summary: 'S3 Presigned POST URL 요청 (방 멤버 전용)' })
+  @ApiOperation({ summary: 'S3 Presigned PUT URL 요청 (방 멤버 전용)' })
   @ApiResponse({
     status: 201,
     description: 'Presigned URL 목록 반환',

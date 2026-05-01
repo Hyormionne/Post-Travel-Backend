@@ -27,11 +27,9 @@ describe('PhotosService', () => {
       },
     };
     s3 = {
-      createPresignedPhotoPost: jest
+      createPresignedPutUrl: jest
         .fn()
-        .mockResolvedValue({ url: 'https://s3.test', fields: {} }),
-      getMaxPhotoBytes: jest.fn().mockReturnValue(20971520),
-      getMaxThumbBytes: jest.fn().mockReturnValue(512000),
+        .mockResolvedValue('https://s3.test/upload?X-Amz-Signature=abc'),
       getPresignedGetUrl: jest
         .fn()
         .mockResolvedValue('https://signed.test/photo'),
@@ -52,10 +50,16 @@ describe('PhotosService', () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       photoId: expect.any(String),
-      original: { url: 'https://s3.test', fields: {} },
-      thumbnail: { url: 'https://s3.test', fields: {} },
+      original: {
+        url: 'https://s3.test/upload?X-Amz-Signature=abc',
+        key: expect.any(String),
+      },
+      thumbnail: {
+        url: 'https://s3.test/upload?X-Amz-Signature=abc',
+        key: expect.any(String),
+      },
     });
-    expect(s3.createPresignedPhotoPost).toHaveBeenCalledTimes(2);
+    expect(s3.createPresignedPutUrl).toHaveBeenCalledTimes(2);
   });
 
   it('complete creates photo records and triggers clustering', async () => {

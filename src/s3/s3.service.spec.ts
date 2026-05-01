@@ -1,12 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ConfigService } from '@nestjs/config';
-import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3Service } from './s3.service';
-
-jest.mock('@aws-sdk/s3-presigned-post', () => ({
-  createPresignedPost: jest.fn(),
-}));
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: jest.fn(),
@@ -37,30 +31,23 @@ describe('S3Service', () => {
     service = new S3Service(mockConfig);
   });
 
-  it('createPresignedPhotoPost returns url and fields', async () => {
-    (createPresignedPost as jest.Mock).mockResolvedValue({
-      url: 'https://bucket.s3.amazonaws.com',
-      fields: { key: 'test-key', policy: 'abc' },
-    });
-
-    const result = await service.createPresignedPhotoPost(
-      'rooms/r1/photos/p1.jpg',
-      20971520,
-      ['image/jpeg', 'image/png', 'image/webp'],
+  it('createPresignedPutUrl returns signed URL', async () => {
+    (getSignedUrl as jest.Mock).mockResolvedValue(
+      'https://bucket.s3.amazonaws.com/rooms/r1/photos/p1.jpg?X-Amz-Signature=abc',
     );
 
-    expect(result.url).toBe('https://bucket.s3.amazonaws.com');
-    expect(result.fields).toMatchObject({ key: 'test-key' });
-    expect(createPresignedPost).toHaveBeenCalledWith(
+    const result = await service.createPresignedPutUrl(
+      'rooms/r1/photos/p1.jpg',
+      'image/jpeg',
+    );
+
+    expect(result).toBe(
+      'https://bucket.s3.amazonaws.com/rooms/r1/photos/p1.jpg?X-Amz-Signature=abc',
+    );
+    expect(getSignedUrl).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({
-        Bucket: 'test-bucket',
-        Key: 'rooms/r1/photos/p1.jpg',
-        Expires: 300,
-        Conditions: expect.arrayContaining([
-          ['content-length-range', 1, 20971520],
-        ]),
-      }),
+      expect.anything(),
+      { expiresIn: 300 },
     );
   });
 
