@@ -20,12 +20,11 @@ type PhotoBody = { id: string; uploadedBy: string };
 type ClusterBody = { id: string; title: string; dayNumber: number };
 
 const mockS3 = {
-  createPresignedPhotoPost: jest.fn().mockResolvedValue({
-    url: 'https://mock-s3.example.com',
-    fields: { key: 'mock-key', policy: 'mock-policy' },
-  }),
-  getMaxPhotoBytes: jest.fn().mockReturnValue(20971520),
-  getMaxThumbBytes: jest.fn().mockReturnValue(512000),
+  createPresignedPutUrl: jest
+    .fn()
+    .mockResolvedValue(
+      'https://mock-s3.example.com/upload?X-Amz-Signature=mock',
+    ),
   getPresignedGetUrl: jest
     .fn()
     .mockResolvedValue('https://mock-s3.example.com/signed'),
@@ -109,10 +108,16 @@ describe('Photos + Clusters E2E', () => {
     expect(body).toHaveLength(2);
     expect(body[0]).toMatchObject({
       photoId: expect.any(String),
-      original: { url: 'https://mock-s3.example.com' },
-      thumbnail: { url: 'https://mock-s3.example.com' },
+      original: {
+        url: 'https://mock-s3.example.com/upload?X-Amz-Signature=mock',
+        key: expect.any(String),
+      },
+      thumbnail: {
+        url: 'https://mock-s3.example.com/upload?X-Amz-Signature=mock',
+        key: expect.any(String),
+      },
     });
-    expect(mockS3.createPresignedPhotoPost).toHaveBeenCalledTimes(4);
+    expect(mockS3.createPresignedPutUrl).toHaveBeenCalledTimes(4);
   });
 
   it('POST /photos/complete — Photo 저장 + 클러스터 생성', async () => {
