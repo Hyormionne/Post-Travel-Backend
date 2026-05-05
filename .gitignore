@@ -45,3 +45,6 @@ tsconfig.build.tsbuildinfo
 .worktrees
 
 AGENTS.md
+
+# pnpm store
+.pnpm-store/
