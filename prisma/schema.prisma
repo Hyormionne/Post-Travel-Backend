@@ -27,6 +27,7 @@ enum ClusterType {
 enum JobStatus {
   PENDING
   RUNNING
+  PROCESSING_CALLBACK
   SUCCESS
   FAILED
 }

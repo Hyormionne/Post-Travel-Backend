@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClustersService } from 'src/modules/clusters/clusters.service';
-import { Photo } from 'generated/prisma/client';
 import { S3Service } from 'src/s3/s3.service';
+import { GpuJobsService } from 'src/modules/gpu-jobs/gpu-jobs.service';
+import { RealtimeService } from 'src/modules/realtime/realtime.service';
+import { Photo } from 'generated/prisma/client';
 import type { PresignedFileItem } from './dto/request-presigned.dto';
 import type { PhotoCompleteItem } from './dto/complete-upload.dto';
 
@@ -34,6 +36,8 @@ export class PhotosService {
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
     private readonly clusters: ClustersService,
+    private readonly gpuJobs: GpuJobsService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async generatePresignedUrls(
@@ -66,6 +70,18 @@ export class PhotosService {
     photos: PhotoCompleteItem[],
     uploadedBy?: string,
   ): Promise<PhotoWithUrls[]> {
+    const requestedPhotoIds = [...new Set(photos.map((p) => p.photoId))];
+    const existingOutsideRoom = await this.prisma.photo.findMany({
+      where: {
+        id: { in: requestedPhotoIds },
+        NOT: { roomId },
+      },
+      select: { id: true },
+    });
+    if (existingOutsideRoom.length > 0) {
+      throw new BadRequestException('Photo ids must belong to the room');
+    }
+
     await this.prisma.photo.createMany({
       data: photos.map((p) => ({
         id: p.photoId,
@@ -89,14 +105,39 @@ export class PhotosService {
       select: { id: true, takenAt: true, lat: true, lng: true },
     });
 
-    await this.clusters.rebuildForRoom(roomId, allPhotos);
+    const clusters = await this.clusters.rebuildForRoom(roomId, allPhotos);
 
     const saved = await this.prisma.photo.findMany({
-      where: { id: { in: photos.map((p) => p.photoId) } },
+      where: { id: { in: requestedPhotoIds }, roomId },
       orderBy: { createdAt: 'asc' },
     });
+    if (saved.length !== requestedPhotoIds.length) {
+      throw new BadRequestException('Failed to save all requested photos');
+    }
 
-    return Promise.all(saved.map((p) => this.withUrls(p)));
+    const result = await Promise.all(saved.map((p) => this.withUrls(p)));
+
+    // Fire-and-forget: enqueue failure must not fail the upload response
+    this.gpuJobs
+      .enqueueVlmJob(
+        roomId,
+        saved.map((p) => p.id),
+      )
+      .catch((err: unknown) => {
+        console.error('[PhotosService] Failed to enqueue VLM job', err);
+      });
+
+    this.realtime.emitToRoom(roomId, 'photo:uploaded', {
+      count: result.length,
+    });
+    for (const cluster of clusters) {
+      this.realtime.emitToRoom(roomId, 'cluster:created', {
+        clusterId: cluster.id,
+        title: cluster.title,
+      });
+    }
+
+    return result;
   }
 
   async findByRoom(roomId: string): Promise<PhotoWithUrls[]> {
