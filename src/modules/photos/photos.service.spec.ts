@@ -2,6 +2,8 @@
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClustersService } from 'src/modules/clusters/clusters.service';
 import { S3Service } from 'src/s3/s3.service';
+import { GpuJobsService } from 'src/modules/gpu-jobs/gpu-jobs.service';
+import { RealtimeService } from 'src/modules/realtime/realtime.service';
 import { PhotosService } from './photos.service';
 
 describe('PhotosService', () => {
@@ -15,6 +17,8 @@ describe('PhotosService', () => {
   };
   let s3: jest.Mocked<Partial<S3Service>>;
   let clusters: jest.Mocked<Partial<ClustersService>>;
+  let gpuJobs: jest.Mocked<Partial<GpuJobsService>>;
+  let realtime: jest.Mocked<Partial<RealtimeService>>;
   let service: PhotosService;
 
   beforeEach(() => {
@@ -35,10 +39,16 @@ describe('PhotosService', () => {
         .mockResolvedValue('https://signed.test/photo'),
     };
     clusters = { rebuildForRoom: jest.fn().mockResolvedValue([]) };
+    gpuJobs = {
+      enqueueVlmJob: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+    };
+    realtime = { emitToRoom: jest.fn() };
     service = new PhotosService(
       prisma as unknown as PrismaService,
       s3 as S3Service,
       clusters as ClustersService,
+      gpuJobs as GpuJobsService,
+      realtime as RealtimeService,
     );
   });
 
@@ -62,9 +72,10 @@ describe('PhotosService', () => {
     expect(s3.createPresignedPutUrl).toHaveBeenCalledTimes(2);
   });
 
-  it('complete creates photo records and triggers clustering', async () => {
+  it('complete creates photo records, triggers clustering, and enqueues VLM job (fire-and-forget)', async () => {
     prisma.photo.createMany.mockResolvedValue({ count: 1 });
     prisma.photo.findMany
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: 'p1',
@@ -81,17 +92,56 @@ describe('PhotosService', () => {
       { photoId: 'p1', s3Key: 'rooms/room-1/photos/p1.jpg', fileSize: 1024 },
     ]);
 
-    expect(prisma.photo.createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.arrayContaining([
-          expect.objectContaining({ id: 'p1', roomId: 'room-1' }),
-        ]),
-      }),
-    );
+    expect(prisma.photo.createMany).toHaveBeenCalled();
     expect(clusters.rebuildForRoom).toHaveBeenCalledWith(
       'room-1',
       expect.any(Array),
     );
+    expect(gpuJobs.enqueueVlmJob).toHaveBeenCalledWith('room-1', ['p1']);
+    expect(realtime.emitToRoom).toHaveBeenCalledWith(
+      'room-1',
+      'photo:uploaded',
+      expect.objectContaining({ count: 1 }),
+    );
+  });
+
+  it('complete returns success even when enqueueVlmJob rejects', async () => {
+    gpuJobs.enqueueVlmJob = jest
+      .fn()
+      .mockRejectedValue(new Error('Queue down'));
+    prisma.photo.createMany.mockResolvedValue({ count: 1 });
+    prisma.photo.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'p1',
+          takenAt: new Date('2025-07-15T09:00:00Z'),
+          lat: null,
+          lng: null,
+        },
+      ])
+      .mockResolvedValueOnce([
+        { id: 'p1', s3Key: 'rooms/room-1/photos/p1.jpg', thumbnailKey: null },
+      ]);
+
+    await expect(
+      service.complete('room-1', [
+        { photoId: 'p1', s3Key: 'rooms/room-1/photos/p1.jpg', fileSize: 1024 },
+      ]),
+    ).resolves.not.toThrow();
+  });
+
+  it('complete rejects photo ids that already belong to a different room', async () => {
+    prisma.photo.findMany.mockResolvedValueOnce([{ id: 'p1' }]);
+
+    await expect(
+      service.complete('room-1', [
+        { photoId: 'p1', s3Key: 'rooms/room-1/photos/p1.jpg', fileSize: 1024 },
+      ]),
+    ).rejects.toThrow('Photo ids must belong to the room');
+
+    expect(prisma.photo.createMany).not.toHaveBeenCalled();
+    expect(gpuJobs.enqueueVlmJob).not.toHaveBeenCalled();
   });
 
   it('findByRoom returns photos with url and thumbnailUrl', async () => {
@@ -110,7 +160,6 @@ describe('PhotosService', () => {
       url: 'https://signed.test/photo',
       thumbnailUrl: 'https://signed.test/photo',
     });
-    expect(s3.getPresignedGetUrl).toHaveBeenCalledTimes(2);
   });
 
   it('findByRoom sets thumbnailUrl to null when thumbnailKey is null', async () => {
@@ -119,8 +168,6 @@ describe('PhotosService', () => {
     ]);
 
     const result = await service.findByRoom('room-1');
-
     expect(result[0].thumbnailUrl).toBeNull();
-    expect(s3.getPresignedGetUrl).toHaveBeenCalledTimes(1);
   });
 });

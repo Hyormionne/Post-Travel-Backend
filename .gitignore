@@ -43,3 +43,8 @@ tsconfig.build.tsbuildinfo
 
 # Git worktrees
 .worktrees
+
+AGENTS.md
+
+# pnpm store
+.pnpm-store/

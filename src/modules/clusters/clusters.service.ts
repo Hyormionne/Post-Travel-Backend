@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Cluster, ClusterType, Photo } from 'generated/prisma/client';
 import { S3Service } from 'src/s3/s3.service';
+import { RealtimeService } from 'src/modules/realtime/realtime.service';
 import { clusterByTimeGps, PhotoInput } from './clustering/time-gps.clustering';
 
 type PhotoWithUrls = Photo & { url: string; thumbnailUrl: string | null };
@@ -14,6 +15,7 @@ export class ClustersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async rebuildForRoom(
@@ -79,14 +81,41 @@ export class ClustersService {
     );
   }
 
-  updateTitle(clusterId: string, title: string): Promise<Cluster> {
-    return this.prisma.cluster.update({
-      where: { id: clusterId },
+  async updateTitle(
+    roomId: string,
+    clusterId: string,
+    title: string,
+  ): Promise<Cluster> {
+    const updatedCount = await this.prisma.cluster.updateMany({
+      where: { id: clusterId, roomId },
       data: { title },
     });
+    if (updatedCount.count === 0) {
+      throw new NotFoundException('Cluster not found in room');
+    }
+
+    const updated = await this.prisma.cluster.findUniqueOrThrow({
+      where: { id: clusterId },
+    });
+    this.realtime.emitToRoom(roomId, 'cluster:updated', {
+      clusterId,
+      title,
+    });
+    return updated;
   }
 
-  async findPhotosInCluster(clusterId: string): Promise<PhotoWithUrls[]> {
+  async findPhotosInCluster(
+    roomId: string,
+    clusterId: string,
+  ): Promise<PhotoWithUrls[]> {
+    const cluster = await this.prisma.cluster.findFirst({
+      where: { id: clusterId, roomId },
+      select: { id: true },
+    });
+    if (!cluster) {
+      throw new NotFoundException('Cluster not found in room');
+    }
+
     const records = await this.prisma.clusterPhoto.findMany({
       where: { clusterId },
       include: { photo: true },

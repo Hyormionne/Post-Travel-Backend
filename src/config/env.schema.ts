@@ -24,4 +24,17 @@ export const envSchema = Joi.object({
   S3_ENDPOINT: Joi.string().uri().optional(),
   AWS_ACCESS_KEY_ID: Joi.string().optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
+  // GPU Jobs
+  GPU_SERVER_URL: Joi.string().uri().default('http://localhost:8001'),
+  GPU_INTERNAL_TOKEN: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string().min(1).default('dev-internal-token'),
+  }),
+  JOB_STALL_TIMEOUT_MS: Joi.number().default(300_000),
+  CALLBACK_BASE_URL: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().uri().required(),
+    otherwise: Joi.string().uri().default('http://localhost:3000'),
+  }),
 });

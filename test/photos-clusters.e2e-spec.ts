@@ -7,6 +7,8 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from 'src/app.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { S3Service } from 'src/s3/s3.service';
+import { GpuJobsService } from 'src/modules/gpu-jobs/gpu-jobs.service';
+import { RealtimeService } from 'src/modules/realtime/realtime.service';
 
 type LoginBody = { accessToken: string };
 type JwtPayload = { sub: string };
@@ -36,6 +38,7 @@ describe('Photos + Clusters E2E', () => {
   let accessToken: string;
   let userId: string;
   let roomId: string;
+  const extraRoomIds: string[] = [];
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -43,6 +46,12 @@ describe('Photos + Clusters E2E', () => {
     })
       .overrideProvider(S3Service)
       .useValue(mockS3)
+      .overrideProvider(GpuJobsService)
+      .useValue({
+        enqueueVlmJob: jest.fn().mockResolvedValue({ id: 'mock-job' }),
+      })
+      .overrideProvider(RealtimeService)
+      .useValue({ emitToRoom: jest.fn(), setServer: jest.fn() })
       .compile();
 
     app = module.createNestApplication();
@@ -86,7 +95,9 @@ describe('Photos + Clusters E2E', () => {
   });
 
   afterAll(async () => {
-    await prisma.travelRoom.delete({ where: { id: roomId } }).catch(() => null);
+    await prisma.travelRoom
+      .deleteMany({ where: { id: { in: [roomId, ...extraRoomIds] } } })
+      .catch(() => null);
     await prisma.user.deleteMany({ where: { email: 'phototest@example.com' } });
     await app.close();
   });
@@ -169,6 +180,42 @@ describe('Photos + Clusters E2E', () => {
     expect(clusters[1].title).toBe('Day 2');
   });
 
+  it('POST /photos/complete — 다른 방 photoId를 섞으면 거부', async () => {
+    const foreignRoom = await prisma.travelRoom.create({
+      data: {
+        title: 'Foreign Photo Room',
+        inviteToken: crypto.randomUUID(),
+        createdBy: userId,
+      },
+    });
+    extraRoomIds.push(foreignRoom.id);
+    const foreignPhoto = await prisma.photo.create({
+      data: {
+        id: crypto.randomUUID(),
+        roomId: foreignRoom.id,
+        uploadedBy: userId,
+        s3Key: `rooms/${foreignRoom.id}/photos/foreign.jpg`,
+        fileSize: 1024,
+        aiKeywords: [],
+      },
+    });
+
+    await request(app.getHttpServer() as Server)
+      .post('/photos/complete')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        roomId,
+        photos: [
+          {
+            photoId: foreignPhoto.id,
+            s3Key: `rooms/${roomId}/photos/${foreignPhoto.id}.jpg`,
+            fileSize: 1024,
+          },
+        ],
+      })
+      .expect(400);
+  });
+
   it('GET /photos?roomId — 사진 목록 조회', async () => {
     const res = await request(app.getHttpServer() as Server)
       .get('/photos')
@@ -213,6 +260,65 @@ describe('Photos + Clusters E2E', () => {
       .expect(200);
 
     expect((res.body as ClusterBody).title).toBe('첫째 날 - 한라산');
+  });
+
+  it('PATCH /clusters/:clusterId — 다른 방 clusterId면 거부', async () => {
+    const foreignRoom = await prisma.travelRoom.create({
+      data: {
+        title: 'Foreign Cluster Room',
+        inviteToken: crypto.randomUUID(),
+        createdBy: userId,
+      },
+    });
+    extraRoomIds.push(foreignRoom.id);
+    const foreignCluster = await prisma.cluster.create({
+      data: {
+        roomId: foreignRoom.id,
+        title: 'Foreign Cluster',
+      },
+    });
+
+    await request(app.getHttpServer() as Server)
+      .patch(`/clusters/${foreignCluster.id}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ roomId, title: '침범 시도' })
+      .expect(404);
+  });
+
+  it('GET /clusters/:clusterId/photos — 다른 방 clusterId면 거부', async () => {
+    const foreignRoom = await prisma.travelRoom.create({
+      data: {
+        title: 'Foreign Cluster Photos Room',
+        inviteToken: crypto.randomUUID(),
+        createdBy: userId,
+      },
+    });
+    extraRoomIds.push(foreignRoom.id);
+    const foreignPhoto = await prisma.photo.create({
+      data: {
+        id: crypto.randomUUID(),
+        roomId: foreignRoom.id,
+        uploadedBy: userId,
+        s3Key: `rooms/${foreignRoom.id}/photos/foreign.jpg`,
+        fileSize: 1024,
+        aiKeywords: [],
+      },
+    });
+    const foreignCluster = await prisma.cluster.create({
+      data: {
+        roomId: foreignRoom.id,
+        title: 'Foreign Cluster Photos',
+        clusterPhotos: {
+          create: { photoId: foreignPhoto.id },
+        },
+      },
+    });
+
+    await request(app.getHttpServer() as Server)
+      .get(`/clusters/${foreignCluster.id}/photos`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .query({ roomId })
+      .expect(404);
   });
 
   it('DELETE /photos/:photoId — 사진 삭제', async () => {

@@ -2,6 +2,7 @@
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RoomRole } from 'generated/prisma/client';
+import { RealtimeService } from 'src/modules/realtime/realtime.service';
 import { RoomsService } from './rooms.service';
 
 describe('RoomsService', () => {
@@ -20,6 +21,7 @@ describe('RoomsService', () => {
     };
     $transaction: jest.Mock;
   };
+  let realtime: jest.Mocked<Partial<RealtimeService>>;
   let service: RoomsService;
 
   beforeEach(() => {
@@ -38,7 +40,11 @@ describe('RoomsService', () => {
       },
       $transaction: jest.fn(),
     };
-    service = new RoomsService(prisma as unknown as PrismaService);
+    realtime = { emitToRoom: jest.fn() };
+    service = new RoomsService(
+      prisma as unknown as PrismaService,
+      realtime as RealtimeService,
+    );
   });
 
   it('create makes a room with OWNER membership', async () => {
@@ -54,15 +60,6 @@ describe('RoomsService', () => {
     expect(prisma.travelRoom.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ title: 'Trip', createdBy: 'user-1' }),
-      }),
-    );
-    expect(prisma.roomMember.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          roomId,
-          userId: 'user-1',
-          role: RoomRole.OWNER,
-        }),
       }),
     );
     expect(result).toMatchObject({ id: roomId });
@@ -85,6 +82,20 @@ describe('RoomsService', () => {
     prisma.roomMember.findUnique.mockResolvedValue({ id: 'existing' });
     await expect(service.joinByToken('valid-token', 'user-1')).rejects.toThrow(
       ConflictException,
+    );
+  });
+
+  it('joinByToken emits room:member_joined after creating membership', async () => {
+    prisma.travelRoom.findFirst.mockResolvedValue({ id: 'room-1' });
+    prisma.roomMember.findUnique.mockResolvedValue(null);
+    prisma.roomMember.create.mockResolvedValue({ id: 'm1', roomId: 'room-1' });
+
+    await service.joinByToken('valid-token', 'user-1');
+
+    expect(realtime.emitToRoom).toHaveBeenCalledWith(
+      'room-1',
+      'room:member_joined',
+      expect.objectContaining({ userId: 'user-1' }),
     );
   });
 

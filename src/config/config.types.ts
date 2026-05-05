@@ -12,4 +12,9 @@ export interface AppEnv {
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_CALLBACK_URL: string;
   FRONTEND_URL: string;
+  GPU_SERVER_URL: string;
+  GPU_INTERNAL_TOKEN: string;
+  JOB_STALL_TIMEOUT_MS: number;
+  CALLBACK_BASE_URL: string;
+  REDIS_PASSWORD?: string;
 }

@@ -75,7 +75,7 @@ export class ClustersController {
     @Param('clusterId') clusterId: string,
     @Body() dto: UpdateClusterDto,
   ) {
-    return this.clusters.updateTitle(clusterId, dto.title);
+    return this.clusters.updateTitle(dto.roomId, clusterId, dto.title);
   }
 
   @ApiOperation({
@@ -91,7 +91,10 @@ export class ClustersController {
   @ApiResponse({ status: 403, description: '방 멤버 아님' })
   @UseGuards(RoomMemberGuard)
   @Get(':clusterId/photos')
-  async getClusterPhotos(@Param('clusterId') clusterId: string) {
-    return this.clusters.findPhotosInCluster(clusterId);
+  async getClusterPhotos(
+    @Param('clusterId') clusterId: string,
+    @Query('roomId') roomId: string,
+  ) {
+    return this.clusters.findPhotosInCluster(roomId, clusterId);
   }
 }

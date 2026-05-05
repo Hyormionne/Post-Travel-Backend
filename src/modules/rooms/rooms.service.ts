@@ -5,19 +5,19 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RoomRole, TravelRoom, RoomMember } from 'generated/prisma/client';
+import { RealtimeService } from 'src/modules/realtime/realtime.service';
 
 @Injectable()
 export class RoomsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   async create(userId: string, title: string): Promise<TravelRoom> {
     return this.prisma.$transaction(async (tx) => {
       const room = await tx.travelRoom.create({
-        data: {
-          title,
-          createdBy: userId,
-          inviteToken: crypto.randomUUID(),
-        },
+        data: { title, createdBy: userId, inviteToken: crypto.randomUUID() },
       });
       await tx.roomMember.create({
         data: { roomId: room.id, userId, role: RoomRole.OWNER },
@@ -50,9 +50,13 @@ export class RoomsService {
     });
     if (existing) throw new ConflictException('Already a member');
 
-    return this.prisma.roomMember.create({
+    const member = await this.prisma.roomMember.create({
       data: { roomId: room.id, userId, role: RoomRole.MEMBER },
     });
+
+    this.realtime.emitToRoom(room.id, 'room:member_joined', { userId });
+
+    return member;
   }
 
   async regenerateInviteToken(roomId: string): Promise<TravelRoom> {
