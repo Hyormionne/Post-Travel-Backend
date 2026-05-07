@@ -15,6 +15,7 @@ import { PhotosModule } from './modules/photos/photos.module';
 import { ClustersModule } from './modules/clusters/clusters.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { GpuJobsModule } from './modules/gpu-jobs/gpu-jobs.module';
+import { BlogsModule } from './modules/blogs/blogs.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { GpuJobsModule } from './modules/gpu-jobs/gpu-jobs.module';
     ClustersModule,
     RealtimeModule,
     GpuJobsModule,
+    BlogsModule,
   ],
 })
 export class AppModule {}
