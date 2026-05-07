@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import { RoomMemberGuard } from 'src/common/guards/room-member.guard';
 import { RoomOwnerGuard } from 'src/common/guards/room-owner.guard';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { UpdateRoomDto } from './dto/update-room.dto';
 
 const ROOM_EXAMPLE = {
   id: 'uuid-room',
@@ -98,6 +100,22 @@ export class RoomsController {
     const room = await this.rooms.findById(roomId);
     if (!room) throw new NotFoundException('Room not found');
     return room;
+  }
+
+  @ApiOperation({ summary: 'Room 제목 수정 (OWNER 전용)' })
+  @ApiResponse({
+    status: 200,
+    description: '수정 성공',
+    schema: { example: ROOM_EXAMPLE },
+  })
+  @ApiResponse({ status: 403, description: 'OWNER 아님' })
+  @UseGuards(RoomOwnerGuard)
+  @Patch(':roomId')
+  async updateRoom(
+    @Param('roomId') roomId: string,
+    @Body() dto: UpdateRoomDto,
+  ) {
+    return this.rooms.updateTitle(roomId, dto.title);
   }
 
   @ApiOperation({ summary: 'Room 삭제 (OWNER 전용)' })

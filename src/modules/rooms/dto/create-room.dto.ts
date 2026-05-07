@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateRoomDto {
-  @ApiProperty({ example: '제주도 여행 2025' })
+  @ApiProperty({ example: '제주도 여행 2025', required: false })
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(100)
-  title: string;
+  title?: string;
 }
