@@ -10,7 +10,7 @@ type LoginBody = { accessToken: string };
 type JwtPayload = { sub: string };
 type RoomBody = {
   id: string;
-  title: string;
+  title: string | null;
   createdBy: string;
   inviteToken: string;
   members: Array<{ role: string }>;
@@ -25,6 +25,7 @@ describe('Rooms E2E', () => {
   let userId: string;
   let roomId: string;
   let inviteToken: string;
+  let untitledRoomId: string;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -161,6 +162,54 @@ describe('Rooms E2E', () => {
     const body = res.body as InviteTokenBody;
     expect(typeof body.inviteToken).toBe('string');
     expect(body.inviteToken).not.toBe(inviteToken);
+  });
+
+  it('POST /rooms — 제목 없이 방 생성 성공', async () => {
+    const res = await request(app.getHttpServer() as Server)
+      .post('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({})
+      .expect(201);
+
+    const body = res.body as RoomBody;
+    expect(body.title).toBeNull();
+    expect(body.createdBy).toBe(userId);
+    untitledRoomId = body.id;
+  });
+
+  it('PATCH /rooms/:roomId — 방 제목 설정 성공 (OWNER)', async () => {
+    const res = await request(app.getHttpServer() as Server)
+      .patch(`/rooms/${untitledRoomId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ title: '나중에 정한 제목' })
+      .expect(200);
+
+    const body = res.body as RoomBody;
+    expect(body.title).toBe('나중에 정한 제목');
+  });
+
+  it('PATCH /rooms/:roomId — 403 (비 OWNER)', async () => {
+    await request(app.getHttpServer() as Server)
+      .post('/auth/signup')
+      .send({
+        email: 'patcher@example.com',
+        password: 'Password123!',
+        nickname: 'Patcher',
+      });
+
+    const loginRes = await request(app.getHttpServer() as Server)
+      .post('/auth/login')
+      .send({ email: 'patcher@example.com', password: 'Password123!' });
+
+    const patcherToken = (loginRes.body as LoginBody).accessToken;
+
+    await request(app.getHttpServer() as Server)
+      .patch(`/rooms/${untitledRoomId}`)
+      .set('Authorization', `Bearer ${patcherToken}`)
+      .send({ title: '탈취 시도' })
+      .expect(403);
+
+    await prisma.user.deleteMany({ where: { email: 'patcher@example.com' } });
   });
 
   it('DELETE /rooms/:roomId — 방 삭제 성공 (OWNER)', async () => {

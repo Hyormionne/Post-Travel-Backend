@@ -123,4 +123,40 @@ describe('RoomsService', () => {
     prisma.roomMember.findUnique.mockResolvedValue(null);
     await expect(service.getRole('room-1', 'user-1')).resolves.toBeNull();
   });
+
+  it('create makes a room without title when title is undefined', async () => {
+    const roomId = 'room-2';
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+    prisma.travelRoom.create.mockResolvedValue({ id: roomId, title: null });
+    prisma.roomMember.create.mockResolvedValue({});
+
+    const result = await service.create('user-1', undefined);
+
+    expect(prisma.travelRoom.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: undefined,
+          createdBy: 'user-1',
+        }),
+      }),
+    );
+    expect(result).toMatchObject({ id: roomId });
+  });
+
+  it('updateTitle updates the room title', async () => {
+    prisma.travelRoom.update.mockResolvedValue({
+      id: 'room-1',
+      title: '새 제목',
+    });
+
+    const result = await service.updateTitle('room-1', '새 제목');
+
+    expect(prisma.travelRoom.update).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      data: { title: '새 제목' },
+    });
+    expect(result).toMatchObject({ title: '새 제목' });
+  });
 });

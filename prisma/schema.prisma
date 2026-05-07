@@ -56,7 +56,7 @@ model User {
 
 model TravelRoom {
   id          String   @id @default(uuid()) @db.Uuid
-  title       String
+  title       String?
   inviteToken String   @unique @map("invite_token")
   createdBy   String   @map("created_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")

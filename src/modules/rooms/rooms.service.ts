@@ -14,7 +14,7 @@ export class RoomsService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  async create(userId: string, title: string): Promise<TravelRoom> {
+  async create(userId: string, title?: string): Promise<TravelRoom> {
     return this.prisma.$transaction(async (tx) => {
       const room = await tx.travelRoom.create({
         data: { title, createdBy: userId, inviteToken: crypto.randomUUID() },
@@ -78,5 +78,12 @@ export class RoomsService {
       where: { roomId_userId: { roomId, userId } },
     });
     return member?.role ?? null;
+  }
+
+  async updateTitle(roomId: string, title: string): Promise<TravelRoom> {
+    return this.prisma.travelRoom.update({
+      where: { id: roomId },
+      data: { title },
+    });
   }
 }
