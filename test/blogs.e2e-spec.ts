@@ -91,7 +91,11 @@ describe('Blogs E2E', () => {
     const roomRes = await request(app.getHttpServer() as Server)
       .post('/rooms')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ title: 'Blog Test Room' });
+      .send({
+        title: 'Blog Test Room',
+        inviteUrl:
+          'https://app.example.com/join/660e8400-e29b-41d4-a716-446655440001',
+      });
     roomId = (roomRes.body as RoomBody).id;
   });
 

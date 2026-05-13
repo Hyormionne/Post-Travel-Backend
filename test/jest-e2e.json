@@ -13,5 +13,6 @@
   },
   "transformIgnorePatterns": [],
   "resolver": "<rootDir>/jest-resolver.js",
-  "setupFiles": ["<rootDir>/setup-dynamic-import.js"]
+  "setupFiles": ["<rootDir>/setup-dynamic-import.js"],
+  "forceExit": true
 }
