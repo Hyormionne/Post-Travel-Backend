@@ -48,3 +48,4 @@ AGENTS.md
 
 # pnpm store
 .pnpm-store/
+.gstack/

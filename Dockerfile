@@ -38,6 +38,8 @@ COPY --from=builder --chown=app:app /app/generated ./generated
 COPY --from=builder --chown=app:app /app/dist ./dist
 COPY --from=builder --chown=app:app /app/prisma ./prisma
 COPY --chown=app:app package.json ./
+COPY --chown=app:app entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 USER app
 EXPOSE 3000
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "entrypoint.sh"]
