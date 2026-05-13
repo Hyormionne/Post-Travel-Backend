@@ -20,7 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
-# `prisma` CLI는 devDependency이므로 prod install에서 빠진다.
 # Prisma 7은 `prisma-client` 제너레이터 산출물을 `generated/prisma/`에 떨어뜨리므로,
 # 이 산출물을 runtime 스테이지에서 별도로 복사한다.
 
@@ -30,7 +29,10 @@ ENV NODE_ENV=production
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system app && useradd --system --gid app app
+    && npm install -g pnpm@10.33.0 \
+    && groupadd --system app \
+    && useradd --system --create-home --gid app app \
+    && chown -R app:app /home/app
 COPY --from=prod-deps --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/generated ./generated
 COPY --from=builder --chown=app:app /app/dist ./dist
