@@ -80,10 +80,18 @@ export class RoomsService {
     return member?.role ?? null;
   }
 
-  async updateTitle(roomId: string, title: string): Promise<TravelRoom> {
+  async updateRoom(
+    roomId: string,
+    data: {
+      title: string;
+      markerShape?: string;
+      markerBgColor?: string;
+      markerEmoji?: string;
+    },
+  ): Promise<TravelRoom> {
     return this.prisma.travelRoom.update({
       where: { id: roomId },
-      data: { title },
+      data,
     });
   }
 }
