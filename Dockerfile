@@ -40,4 +40,4 @@ COPY --from=builder --chown=app:app /app/prisma ./prisma
 COPY --chown=app:app package.json ./
 USER app
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
