@@ -24,11 +24,13 @@ import { RoomOwnerGuard } from 'src/common/guards/room-owner.guard';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
+import { RegenerateInviteDto } from './dto/regenerate-invite.dto';
 
 const ROOM_EXAMPLE = {
   id: 'uuid-room',
   title: '제주도 여행 2025',
   inviteToken: 'uuid-token',
+  inviteUrl: 'https://app.example.com/join/uuid-token',
   createdBy: 'uuid-user',
   createdAt: '2025-07-01T00:00:00.000Z',
   members: [
@@ -59,7 +61,7 @@ export class RoomsController {
     @Body() dto: CreateRoomDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.rooms.create(user.id, dto.title);
+    return this.rooms.create(user.id, dto.inviteUrl, dto.title);
   }
 
   @ApiOperation({ summary: '초대 토큰으로 방 참가 (JWT 필수)' })
@@ -132,13 +134,21 @@ export class RoomsController {
   @ApiResponse({
     status: 201,
     description: '재발급 성공',
-    schema: { example: { inviteToken: 'new-uuid-token' } },
+    schema: {
+      example: {
+        inviteToken: 'new-uuid-token',
+        inviteUrl: 'https://app.example.com/join/new-uuid-token',
+      },
+    },
   })
   @ApiResponse({ status: 403, description: 'OWNER 아님' })
   @UseGuards(RoomOwnerGuard)
   @Post(':roomId/invite-token')
-  async regenerateToken(@Param('roomId') roomId: string) {
-    const room = await this.rooms.regenerateInviteToken(roomId);
-    return { inviteToken: room.inviteToken };
+  async regenerateToken(
+    @Param('roomId') roomId: string,
+    @Body() dto: RegenerateInviteDto,
+  ) {
+    const room = await this.rooms.regenerateInviteToken(roomId, dto.inviteUrl);
+    return { inviteToken: room.inviteToken, inviteUrl: room.inviteUrl };
   }
 }

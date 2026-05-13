@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RoomRole } from 'generated/prisma/client';
 import { RealtimeService } from 'src/modules/realtime/realtime.service';
@@ -47,22 +51,80 @@ describe('RoomsService', () => {
     );
   });
 
-  it('create makes a room with OWNER membership', async () => {
+  const VALID_INVITE_URL =
+    'https://app.example.com/join/550e8400-e29b-41d4-a716-446655440000';
+  const VALID_TOKEN = '550e8400-e29b-41d4-a716-446655440000';
+
+  it('create makes a room with OWNER membership and stores inviteUrl', async () => {
     const roomId = 'room-1';
     prisma.$transaction.mockImplementation(
       async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
     );
-    prisma.travelRoom.create.mockResolvedValue({ id: roomId, title: 'Trip' });
+    prisma.travelRoom.create.mockResolvedValue({
+      id: roomId,
+      title: 'Trip',
+      inviteToken: VALID_TOKEN,
+      inviteUrl: VALID_INVITE_URL,
+    });
     prisma.roomMember.create.mockResolvedValue({});
 
-    const result = await service.create('user-1', 'Trip');
+    const result = await service.create('user-1', VALID_INVITE_URL, 'Trip');
 
     expect(prisma.travelRoom.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ title: 'Trip', createdBy: 'user-1' }),
+        data: expect.objectContaining({
+          title: 'Trip',
+          createdBy: 'user-1',
+          inviteToken: VALID_TOKEN,
+          inviteUrl: VALID_INVITE_URL,
+        }),
       }),
     );
     expect(result).toMatchObject({ id: roomId });
+  });
+
+  it('create makes a room without title when title is undefined', async () => {
+    const roomId = 'room-2';
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+    prisma.travelRoom.create.mockResolvedValue({
+      id: roomId,
+      title: null,
+      inviteToken: VALID_TOKEN,
+      inviteUrl: VALID_INVITE_URL,
+    });
+    prisma.roomMember.create.mockResolvedValue({});
+
+    const result = await service.create('user-1', VALID_INVITE_URL, undefined);
+
+    expect(prisma.travelRoom.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: undefined,
+          createdBy: 'user-1',
+          inviteToken: VALID_TOKEN,
+          inviteUrl: VALID_INVITE_URL,
+        }),
+      }),
+    );
+    expect(result).toMatchObject({ id: roomId });
+  });
+
+  it('create throws BadRequestException if inviteUrl does not end with a UUID', async () => {
+    await expect(
+      service.create(
+        'user-1',
+        'https://app.example.com/join/not-a-uuid',
+        'Trip',
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('create throws BadRequestException if inviteUrl path has no segment', async () => {
+    await expect(
+      service.create('user-1', 'https://app.example.com/', 'Trip'),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('findById returns null when not found', async () => {
@@ -99,6 +161,36 @@ describe('RoomsService', () => {
     );
   });
 
+  it('regenerateInviteToken updates inviteToken and inviteUrl', async () => {
+    const newUrl =
+      'https://app.example.com/join/770e8400-e29b-41d4-a716-446655440000';
+    prisma.travelRoom.update.mockResolvedValue({
+      id: 'room-1',
+      inviteToken: '770e8400-e29b-41d4-a716-446655440000',
+      inviteUrl: newUrl,
+    });
+
+    const result = await service.regenerateInviteToken('room-1', newUrl);
+
+    expect(prisma.travelRoom.update).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      data: {
+        inviteToken: '770e8400-e29b-41d4-a716-446655440000',
+        inviteUrl: newUrl,
+      },
+    });
+    expect(result).toMatchObject({ inviteUrl: newUrl });
+  });
+
+  it('regenerateInviteToken throws BadRequestException if URL has no UUID segment', async () => {
+    await expect(
+      service.regenerateInviteToken(
+        'room-1',
+        'https://app.example.com/join/not-a-uuid',
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('isMember returns true when membership exists', async () => {
     prisma.roomMember.findUnique.mockResolvedValue({
       id: 'm1',
@@ -122,27 +214,6 @@ describe('RoomsService', () => {
   it('getRole returns null when not a member', async () => {
     prisma.roomMember.findUnique.mockResolvedValue(null);
     await expect(service.getRole('room-1', 'user-1')).resolves.toBeNull();
-  });
-
-  it('create makes a room without title when title is undefined', async () => {
-    const roomId = 'room-2';
-    prisma.$transaction.mockImplementation(
-      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
-    );
-    prisma.travelRoom.create.mockResolvedValue({ id: roomId, title: null });
-    prisma.roomMember.create.mockResolvedValue({});
-
-    const result = await service.create('user-1', undefined);
-
-    expect(prisma.travelRoom.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          title: undefined,
-          createdBy: 'user-1',
-        }),
-      }),
-    );
-    expect(result).toMatchObject({ id: roomId });
   });
 
   it('updateTitle updates the room title', async () => {

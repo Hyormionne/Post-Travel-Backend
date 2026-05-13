@@ -13,10 +13,13 @@ type RoomBody = {
   title: string | null;
   createdBy: string;
   inviteToken: string;
+  inviteUrl: string;
   members: Array<{ role: string }>;
 };
 type MemberBody = { role: string };
-type InviteTokenBody = { inviteToken: string };
+type InviteTokenBody = { inviteToken: string; inviteUrl: string };
+
+const BASE_INVITE_URL = 'https://app.example.com/join';
 
 describe('Rooms E2E', () => {
   let app: INestApplication;
@@ -73,18 +76,36 @@ describe('Rooms E2E', () => {
   });
 
   it('POST /rooms — 방 생성 성공', async () => {
+    const inviteUrl = `${BASE_INVITE_URL}/550e8400-e29b-41d4-a716-446655440000`;
     const res = await request(app.getHttpServer() as Server)
       .post('/rooms')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ title: '제주도 여행 E2E' })
+      .send({ title: '제주도 여행 E2E', inviteUrl })
       .expect(201);
 
     const body = res.body as RoomBody;
     expect(body.title).toBe('제주도 여행 E2E');
     expect(body.createdBy).toBe(userId);
-    expect(typeof body.inviteToken).toBe('string');
+    expect(body.inviteToken).toBe('550e8400-e29b-41d4-a716-446655440000');
+    expect(body.inviteUrl).toBe(inviteUrl);
     roomId = body.id;
     inviteToken = body.inviteToken;
+  });
+
+  it('POST /rooms — 400: inviteUrl 없이 방 생성 시 실패', async () => {
+    await request(app.getHttpServer() as Server)
+      .post('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ title: '제목만' })
+      .expect(400);
+  });
+
+  it('POST /rooms — 400: inviteUrl 마지막 세그먼트가 UUID가 아닌 경우', async () => {
+    await request(app.getHttpServer() as Server)
+      .post('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ inviteUrl: 'https://app.example.com/join/not-a-uuid' })
+      .expect(400);
   });
 
   it('GET /rooms/:roomId — 방 조회 성공 (멤버)', async () => {
@@ -97,6 +118,7 @@ describe('Rooms E2E', () => {
     expect(body.id).toBe(roomId);
     expect(body.members).toHaveLength(1);
     expect(body.members[0].role).toBe('OWNER');
+    expect(typeof body.inviteUrl).toBe('string');
   });
 
   it('GET /rooms/:roomId — 403 (비멤버)', async () => {
@@ -154,26 +176,31 @@ describe('Rooms E2E', () => {
   });
 
   it('POST /rooms/:roomId/invite-token — 토큰 재발급 (OWNER)', async () => {
+    const newInviteUrl = `${BASE_INVITE_URL}/660e8400-e29b-41d4-a716-446655440000`;
     const res = await request(app.getHttpServer() as Server)
       .post(`/rooms/${roomId}/invite-token`)
       .set('Authorization', `Bearer ${accessToken}`)
+      .send({ inviteUrl: newInviteUrl })
       .expect(201);
 
     const body = res.body as InviteTokenBody;
-    expect(typeof body.inviteToken).toBe('string');
+    expect(body.inviteToken).toBe('660e8400-e29b-41d4-a716-446655440000');
+    expect(body.inviteUrl).toBe(newInviteUrl);
     expect(body.inviteToken).not.toBe(inviteToken);
   });
 
   it('POST /rooms — 제목 없이 방 생성 성공', async () => {
+    const inviteUrl = `${BASE_INVITE_URL}/770e8400-e29b-41d4-a716-446655440000`;
     const res = await request(app.getHttpServer() as Server)
       .post('/rooms')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({})
+      .send({ inviteUrl })
       .expect(201);
 
     const body = res.body as RoomBody;
     expect(body.title).toBeNull();
     expect(body.createdBy).toBe(userId);
+    expect(body.inviteUrl).toBe(inviteUrl);
     untitledRoomId = body.id;
   });
 

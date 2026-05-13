@@ -58,6 +58,7 @@ model TravelRoom {
   id          String   @id @default(uuid()) @db.Uuid
   title       String?
   inviteToken String   @unique @map("invite_token")
+  inviteUrl   String?  @unique @map("invite_url")
   createdBy   String   @map("created_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")
 

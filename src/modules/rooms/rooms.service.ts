@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -14,10 +15,26 @@ export class RoomsService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  async create(userId: string, title?: string): Promise<TravelRoom> {
+  private extractTokenFromUrl(inviteUrl: string): string {
+    const { pathname } = new URL(inviteUrl);
+    const token = pathname.replace(/\/$/, '').split('/').pop();
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!token || !uuidRegex.test(token)) {
+      throw new BadRequestException('inviteUrl must end with a valid UUID');
+    }
+    return token;
+  }
+
+  async create(
+    userId: string,
+    inviteUrl: string,
+    title?: string,
+  ): Promise<TravelRoom> {
+    const inviteToken = this.extractTokenFromUrl(inviteUrl);
     return this.prisma.$transaction(async (tx) => {
       const room = await tx.travelRoom.create({
-        data: { title, createdBy: userId, inviteToken: crypto.randomUUID() },
+        data: { title, createdBy: userId, inviteToken, inviteUrl },
       });
       await tx.roomMember.create({
         data: { roomId: room.id, userId, role: RoomRole.OWNER },
@@ -59,10 +76,14 @@ export class RoomsService {
     return member;
   }
 
-  async regenerateInviteToken(roomId: string): Promise<TravelRoom> {
+  async regenerateInviteToken(
+    roomId: string,
+    inviteUrl: string,
+  ): Promise<TravelRoom> {
+    const inviteToken = this.extractTokenFromUrl(inviteUrl);
     return this.prisma.travelRoom.update({
       where: { id: roomId },
-      data: { inviteToken: crypto.randomUUID() },
+      data: { inviteToken, inviteUrl },
     });
   }
 
