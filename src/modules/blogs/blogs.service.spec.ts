@@ -2,7 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { S3Service } from 'src/s3/s3.service';
 import { RealtimeService } from 'src/modules/realtime/realtime.service';
-import { BlogVisibility } from 'generated/prisma/client';
+import { GpuJobsService } from 'src/modules/gpu-jobs/gpu-jobs.service';
+import { BlogVisibility, JobStatus } from 'generated/prisma/client';
 import { BlogsService } from './blogs.service';
 import { CreateBlogDto } from './dto/create-blog.dto';
 
@@ -21,10 +22,12 @@ describe('BlogsService', () => {
       deleteMany: jest.Mock;
       findMany: jest.Mock;
     };
+    photo: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let s3: jest.Mocked<Partial<S3Service>>;
   let realtime: jest.Mocked<Partial<RealtimeService>>;
+  let gpuJobs: jest.Mocked<Partial<GpuJobsService>>;
   let service: BlogsService;
 
   const BLOG = {
@@ -54,6 +57,7 @@ describe('BlogsService', () => {
         deleteMany: jest.fn(),
         findMany: jest.fn(),
       },
+      photo: { findMany: jest.fn() },
       $transaction: jest.fn(),
     };
     s3 = {
@@ -62,10 +66,12 @@ describe('BlogsService', () => {
         .mockResolvedValue('https://signed.test/photo'),
     };
     realtime = { emitToRoom: jest.fn() };
+    gpuJobs = { enqueueBlogJob: jest.fn() };
     service = new BlogsService(
       prisma as unknown as PrismaService,
       s3 as S3Service,
       realtime as RealtimeService,
+      gpuJobs as GpuJobsService,
     );
   });
 
@@ -172,6 +178,33 @@ describe('BlogsService', () => {
       await expect(service.findOne('no-such')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('generateFromRoom', () => {
+    it('enqueues an AI blog job with room photo ids and returns job status', async () => {
+      prisma.photo.findMany.mockResolvedValue([{ id: 'p1' }, { id: 'p2' }]);
+      (gpuJobs.enqueueBlogJob as jest.Mock).mockResolvedValue({
+        id: 'job-blog',
+        status: JobStatus.PENDING,
+      });
+
+      const result = await service.generateFromRoom('room-1', 'user-1', {
+        persona: 'witty',
+      });
+
+      expect(prisma.photo.findMany).toHaveBeenCalledWith({
+        where: { roomId: 'room-1' },
+        select: { id: true },
+        orderBy: [{ takenAt: 'asc' }, { createdAt: 'asc' }],
+      });
+      expect(gpuJobs.enqueueBlogJob).toHaveBeenCalledWith({
+        roomId: 'room-1',
+        authorId: 'user-1',
+        photoIds: ['p1', 'p2'],
+        persona: 'witty',
+      });
+      expect(result).toEqual({ jobId: 'job-blog', status: JobStatus.PENDING });
     });
   });
 

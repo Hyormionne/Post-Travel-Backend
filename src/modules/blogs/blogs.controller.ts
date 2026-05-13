@@ -25,6 +25,7 @@ import { BlogAuthorGuard } from 'src/common/guards/blog-author.guard';
 import { BlogAccessGuard } from 'src/common/guards/blog-access.guard';
 import { BlogsService } from './blogs.service';
 import { CreateBlogDto } from './dto/create-blog.dto';
+import { GenerateBlogDto } from './dto/generate-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 
 const BLOG_EXAMPLE = {
@@ -66,6 +67,22 @@ export class BlogsController {
   @Get()
   async findByRoom(@Query('roomId') roomId: string) {
     return this.blogs.findByRoom(roomId);
+  }
+
+  @ApiOperation({ summary: 'AI 블로그 초안 생성 요청 (방 멤버 전용)' })
+  @ApiResponse({
+    status: 201,
+    schema: { example: { jobId: 'uuid-job', status: 'PENDING' } },
+  })
+  @ApiResponse({ status: 403, description: '방 멤버 아님' })
+  @UseGuards(RoomMemberGuard)
+  @Post(':roomId/generate')
+  async generateFromRoom(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('roomId') roomId: string,
+    @Body() dto: GenerateBlogDto,
+  ) {
+    return this.blogs.generateFromRoom(roomId, user.id, dto);
   }
 
   @ApiOperation({ summary: '블로그 단건 조회 (방 멤버 전용)' })

@@ -6,9 +6,10 @@ import { BlogAccessGuard } from 'src/common/guards/blog-access.guard';
 import { RoomsModule } from 'src/modules/rooms/rooms.module';
 import { RealtimeModule } from 'src/modules/realtime/realtime.module';
 import { S3Module } from 'src/s3/s3.module';
+import { GpuJobsModule } from 'src/modules/gpu-jobs/gpu-jobs.module';
 
 @Module({
-  imports: [S3Module, RoomsModule, RealtimeModule],
+  imports: [S3Module, RoomsModule, RealtimeModule, GpuJobsModule],
   controllers: [BlogsController],
   providers: [BlogsService, BlogAuthorGuard, BlogAccessGuard],
   exports: [BlogsService],
