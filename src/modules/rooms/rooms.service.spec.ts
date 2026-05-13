@@ -216,13 +216,41 @@ describe('RoomsService', () => {
     await expect(service.getRole('room-1', 'user-1')).resolves.toBeNull();
   });
 
-  it('updateTitle updates the room title', async () => {
+  it('updateRoom updates the room title and marker fields', async () => {
+    prisma.travelRoom.update.mockResolvedValue({
+      id: 'room-1',
+      title: '새 제목',
+      markerShape: 'classic',
+      markerBgColor: '#d8c9a5',
+      markerEmoji: '🌴',
+    });
+
+    const result = await service.updateRoom('room-1', {
+      title: '새 제목',
+      markerShape: 'classic',
+      markerBgColor: '#d8c9a5',
+      markerEmoji: '🌴',
+    });
+
+    expect(prisma.travelRoom.update).toHaveBeenCalledWith({
+      where: { id: 'room-1' },
+      data: {
+        title: '새 제목',
+        markerShape: 'classic',
+        markerBgColor: '#d8c9a5',
+        markerEmoji: '🌴',
+      },
+    });
+    expect(result).toMatchObject({ title: '새 제목', markerShape: 'classic' });
+  });
+
+  it('updateRoom updates with only title when marker fields are omitted', async () => {
     prisma.travelRoom.update.mockResolvedValue({
       id: 'room-1',
       title: '새 제목',
     });
 
-    const result = await service.updateTitle('room-1', '새 제목');
+    const result = await service.updateRoom('room-1', { title: '새 제목' });
 
     expect(prisma.travelRoom.update).toHaveBeenCalledWith({
       where: { id: 'room-1' },

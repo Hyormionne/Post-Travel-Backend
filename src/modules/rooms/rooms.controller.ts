@@ -104,7 +104,7 @@ export class RoomsController {
     return room;
   }
 
-  @ApiOperation({ summary: 'Room 제목 수정 (OWNER 전용)' })
+  @ApiOperation({ summary: 'Room 제목/마커 수정 (OWNER 전용)' })
   @ApiResponse({
     status: 200,
     description: '수정 성공',
@@ -117,7 +117,12 @@ export class RoomsController {
     @Param('roomId') roomId: string,
     @Body() dto: UpdateRoomDto,
   ) {
-    return this.rooms.updateTitle(roomId, dto.title);
+    return this.rooms.updateRoom(roomId, {
+      title: dto.title,
+      markerShape: dto.markerShape,
+      markerBgColor: dto.markerBgColor,
+      markerEmoji: dto.markerEmoji,
+    });
   }
 
   @ApiOperation({ summary: 'Room 삭제 (OWNER 전용)' })
