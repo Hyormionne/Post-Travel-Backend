@@ -144,7 +144,6 @@ jobs:
             cd ~/app
             docker compose -f docker-compose.prod.yml pull nestjs-backend
             docker compose -f docker-compose.prod.yml up -d postgres redis
-            docker compose -f docker-compose.prod.yml run --rm --no-deps nestjs-backend pnpm prisma:migrate:deploy
             docker compose -f docker-compose.prod.yml up -d --no-deps nestjs-backend
             sleep 5
             docker compose -f docker-compose.prod.yml ps

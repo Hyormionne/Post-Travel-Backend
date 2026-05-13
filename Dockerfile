@@ -39,7 +39,7 @@ COPY --from=builder --chown=app:app /app/dist ./dist
 COPY --from=builder --chown=app:app /app/prisma ./prisma
 COPY --chown=app:app package.json ./
 COPY --chown=app:app entrypoint.sh ./
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh && chown app:app /app
 USER app
 EXPOSE 3000
 CMD ["sh", "entrypoint.sh"]
