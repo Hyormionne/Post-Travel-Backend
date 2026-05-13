@@ -32,7 +32,10 @@ describe('GpuJobsProcessor', () => {
     s3 = {
       getPresignedGetUrl: jest.fn().mockResolvedValue('https://s3.test/p1.jpg'),
     };
-    gpuClient = { callVlmAnalyze: jest.fn().mockResolvedValue(undefined) };
+    gpuClient = {
+      callVlmAnalyze: jest.fn().mockResolvedValue(undefined),
+      callBlogGenerate: jest.fn().mockResolvedValue(undefined),
+    };
     realtime = { emitToRoom: jest.fn() };
     config = { getOrThrow: jest.fn().mockReturnValue('http://localhost:3000') };
     processor = new GpuJobsProcessor(
@@ -99,5 +102,46 @@ describe('GpuJobsProcessor', () => {
       'photo:processing_progress',
       expect.objectContaining({ jobId: 'job-1', doneCount: 0, totalCount: 1 }),
     );
+  });
+
+  it('calls GPU /blog/generate with photo metadata and blog callback URL', async () => {
+    const takenAt = new Date('2026-05-11T10:00:00.000Z');
+    prisma.photo.findMany.mockResolvedValue([
+      {
+        id: 'p1',
+        s3Key: 'rooms/r1/photos/p1.jpg',
+        takenAt,
+        lat: 37.5,
+        lng: 127.1,
+        sceneLabel: 'food',
+      },
+    ]);
+    const job = {
+      name: 'blog-generate',
+      data: {
+        processingJobId: 'job-1',
+        roomId: 'room-1',
+        photoIds: ['p1'],
+        persona: 'witty',
+      },
+    } as Job;
+
+    await processor.process(job);
+
+    expect(gpuClient.callBlogGenerate).toHaveBeenCalledWith({
+      job_id: 'job-1',
+      photos: [
+        {
+          photo_id: 'p1',
+          url: 'https://s3.test/p1.jpg',
+          taken_at: '2026-05-11T10:00:00.000Z',
+          lat: 37.5,
+          lng: 127.1,
+          scene_label: 'food',
+        },
+      ],
+      callback_url: 'http://localhost:3000/internal/jobs/job-1/blog-callback',
+      persona: 'witty',
+    });
   });
 });

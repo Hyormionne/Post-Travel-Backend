@@ -71,3 +71,30 @@ export class JobCallbackDto {
   @Type(() => ClusterSuggestionDto)
   cluster?: ClusterSuggestionDto;
 }
+
+export class BlogSectionCallbackDto {
+  @ApiProperty({ example: ['uuid-photo'] })
+  @IsArray()
+  @IsString({ each: true })
+  photoIds!: string[];
+
+  @ApiProperty({ example: '이 사진들에 대한 본문 2~4문장' })
+  @IsString()
+  text!: string;
+}
+
+export class BlogCallbackDto {
+  @ApiProperty({ example: '후쿠오카의 반짝이는 밤' })
+  @IsString()
+  title!: string;
+
+  @ApiProperty({ example: '여행 전체 분위기 한 문단' })
+  @IsString()
+  summary!: string;
+
+  @ApiProperty({ type: [BlogSectionCallbackDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BlogSectionCallbackDto)
+  sections!: BlogSectionCallbackDto[];
+}

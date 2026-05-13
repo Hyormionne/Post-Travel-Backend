@@ -172,15 +172,16 @@ model BlogPhoto {
 }
 
 model ProcessingJob {
-  id         String    @id @default(uuid()) @db.Uuid
-  roomId     String    @map("room_id") @db.Uuid
-  jobType    JobType   @map("job_type")
-  status     JobStatus @default(PENDING)
-  totalCount Int       @default(0) @map("total_count")
-  doneCount  Int       @default(0) @map("done_count")
-  errorMsg   String?   @map("error_msg")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  id          String    @id @default(uuid()) @db.Uuid
+  roomId      String    @map("room_id") @db.Uuid
+  requestedBy String?   @map("requested_by") @db.Uuid
+  jobType     JobType   @map("job_type")
+  status      JobStatus @default(PENDING)
+  totalCount  Int       @default(0) @map("total_count")
+  doneCount   Int       @default(0) @map("done_count")
+  errorMsg    String?   @map("error_msg")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   room TravelRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 

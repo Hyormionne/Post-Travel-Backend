@@ -29,6 +29,7 @@ export type BlogVisibility =
 export const JobStatus = {
   PENDING: 'PENDING',
   RUNNING: 'RUNNING',
+  PROCESSING_CALLBACK: 'PROCESSING_CALLBACK',
   SUCCESS: 'SUCCESS',
   FAILED: 'FAILED',
 } as const;

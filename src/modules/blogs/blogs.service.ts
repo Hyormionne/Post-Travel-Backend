@@ -1,10 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { S3Service } from 'src/s3/s3.service';
 import { RealtimeService } from 'src/modules/realtime/realtime.service';
-import { Blog, BlogVisibility } from 'generated/prisma/client';
+import { GpuJobsService } from 'src/modules/gpu-jobs/gpu-jobs.service';
+import { Blog, BlogVisibility, JobStatus } from 'generated/prisma/client';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
+import type { GenerateBlogDto } from './dto/generate-blog.dto';
 
 const PHOTO_URL_TTL = 86_400;
 
@@ -16,6 +22,7 @@ type BlogPhotoItem = {
 };
 export type BlogWithPhotoUrls = Blog & { photos: BlogPhotoItem[] };
 export type BlogMeta = { authorId: string; roomId: string };
+export type BlogGenerationJob = { jobId: string; status: JobStatus };
 
 @Injectable()
 export class BlogsService {
@@ -23,6 +30,7 @@ export class BlogsService {
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
     private readonly realtime: RealtimeService,
+    private readonly gpuJobs: GpuJobsService,
   ) {}
 
   async create(
@@ -66,6 +74,40 @@ export class BlogsService {
     const blog = await this.prisma.blog.findUnique({ where: { id: blogId } });
     if (!blog) throw new NotFoundException('Blog not found');
     return this.fetchWithPhotos(blog);
+  }
+
+  async generateFromRoom(
+    roomId: string,
+    authorId: string,
+    dto: GenerateBlogDto = {},
+  ): Promise<BlogGenerationJob> {
+    const requestedPhotoIds = dto.photoIds
+      ? [...new Set(dto.photoIds)]
+      : undefined;
+    const photos = await this.prisma.photo.findMany({
+      where: {
+        roomId,
+        ...(requestedPhotoIds ? { id: { in: requestedPhotoIds } } : {}),
+      },
+      select: { id: true },
+      orderBy: [{ takenAt: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    if (requestedPhotoIds && photos.length !== requestedPhotoIds.length) {
+      throw new BadRequestException('Photo ids must belong to the room');
+    }
+    if (photos.length === 0) {
+      throw new BadRequestException('At least one photo is required');
+    }
+
+    const job = await this.gpuJobs.enqueueBlogJob({
+      roomId,
+      authorId,
+      photoIds: photos.map((p) => p.id),
+      persona: dto.persona,
+    });
+
+    return { jobId: job.id, status: job.status };
   }
 
   async update(blogId: string, dto: UpdateBlogDto): Promise<BlogWithPhotoUrls> {

@@ -54,6 +54,45 @@ describe('GpuJobsService', () => {
     expect(result).toEqual(mockJob);
   });
 
+  it('enqueueBlogJob creates LLM_BLOG_DRAFT job for the requesting author', async () => {
+    const mockJob = {
+      id: 'job-blog',
+      roomId: 'room-1',
+      status: JobStatus.PENDING,
+      totalCount: 2,
+      requestedBy: 'user-1',
+    };
+    prisma.processingJob.create.mockResolvedValue(mockJob);
+
+    const result = await service.enqueueBlogJob({
+      roomId: 'room-1',
+      authorId: 'user-1',
+      photoIds: ['p1', 'p2'],
+      persona: 'witty',
+    });
+
+    expect(prisma.processingJob.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        roomId: 'room-1',
+        requestedBy: 'user-1',
+        jobType: JobType.LLM_BLOG_DRAFT,
+        totalCount: 2,
+        status: JobStatus.PENDING,
+      }),
+    });
+    expect(queue.add).toHaveBeenCalledWith(
+      'blog-generate',
+      expect.objectContaining({
+        processingJobId: 'job-blog',
+        roomId: 'room-1',
+        photoIds: ['p1', 'p2'],
+        persona: 'witty',
+      }),
+      expect.objectContaining({ attempts: 3 }),
+    );
+    expect(result).toEqual(mockJob);
+  });
+
   it('findByRoom returns jobs ordered by createdAt desc', async () => {
     prisma.processingJob.findMany.mockResolvedValue([
       { id: 'j1' },

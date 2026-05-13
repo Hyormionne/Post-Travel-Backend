@@ -13,6 +13,8 @@ describe('WebhookController', () => {
       update: jest.Mock;
     };
     photo: { findMany: jest.Mock; updateMany: jest.Mock };
+    blog: { create: jest.Mock };
+    blogPhoto: { createMany: jest.Mock };
     cluster: { create: jest.Mock };
     clusterPhoto: { createMany: jest.Mock };
     $transaction: jest.Mock;
@@ -26,6 +28,7 @@ describe('WebhookController', () => {
         findUniqueOrThrow: jest.fn().mockResolvedValue({
           id: 'job-1',
           roomId: 'room-1',
+          requestedBy: 'user-1',
           status: JobStatus.RUNNING,
         }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -37,6 +40,10 @@ describe('WebhookController', () => {
         findMany: jest.fn().mockResolvedValue([{ id: 'p1' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      blog: {
+        create: jest.fn().mockResolvedValue({ id: 'blog-1' }),
+      },
+      blogPhoto: { createMany: jest.fn().mockResolvedValue({}) },
       cluster: {
         create: jest
           .fn()
@@ -160,6 +167,39 @@ describe('WebhookController', () => {
       'room-1',
       'photo:processing_progress',
       expect.objectContaining({ jobId: 'job-1', status: 'SUCCESS' }),
+    );
+  });
+
+  it('creates a blog and marks the job SUCCESS from blog callback', async () => {
+    await controller.receiveBlogCallback('job-1', {
+      title: '테스트 블로그',
+      summary: '여행 요약',
+      sections: [{ photoIds: ['p1'], text: '첫 번째 장면입니다.' }],
+    });
+
+    expect(prisma.photo.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ['p1'] }, roomId: 'room-1' },
+      select: { id: true },
+    });
+    expect(prisma.blog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        roomId: 'room-1',
+        authorId: 'user-1',
+        title: '테스트 블로그',
+        content: '여행 요약\n\n첫 번째 장면입니다.',
+      }),
+    });
+    expect(prisma.blogPhoto.createMany).toHaveBeenCalledWith({
+      data: [{ blogId: 'blog-1', photoId: 'p1', orderIdx: 0 }],
+    });
+    expect(prisma.processingJob.update).toHaveBeenCalledWith({
+      where: { id: 'job-1' },
+      data: { status: JobStatus.SUCCESS, doneCount: 1 },
+    });
+    expect(realtime.emitToRoom).toHaveBeenCalledWith(
+      'room-1',
+      'blog:generated',
+      { jobId: 'job-1', blogId: 'blog-1' },
     );
   });
 });

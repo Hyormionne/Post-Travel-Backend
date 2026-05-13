@@ -43,4 +43,37 @@ describe('GpuServerClient', () => {
       expect.objectContaining({ headers: { 'X-Internal-Token': 'secret' } }),
     );
   });
+
+  it('calls GPU /blog/generate with X-Internal-Token header', async () => {
+    await client.callBlogGenerate({
+      job_id: 'job-1',
+      photos: [
+        {
+          photo_id: 'p1',
+          url: 'https://s3.test/p.jpg',
+          taken_at: '2026-05-11T10:00:00.000Z',
+          lat: 37.5,
+          lng: 127.1,
+          scene_label: 'food',
+        },
+      ],
+      callback_url: 'http://host/internal/jobs/job-1/blog-callback',
+      persona: 'friendly_diary',
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      'http://gpu.test/blog/generate',
+      expect.objectContaining({
+        job_id: 'job-1',
+        photos: [
+          expect.objectContaining({
+            photo_id: 'p1',
+            scene_label: 'food',
+          }),
+        ],
+        persona: 'friendly_diary',
+      }),
+      expect.objectContaining({ headers: { 'X-Internal-Token': 'secret' } }),
+    );
+  });
 });

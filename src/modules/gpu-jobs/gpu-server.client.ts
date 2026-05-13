@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import type { AppEnv } from 'src/config/config.types';
-import type { VlmAnalyzeRequest } from './gpu-jobs.types';
+import type { BlogGenerateRequest, VlmAnalyzeRequest } from './gpu-jobs.types';
 
 @Injectable()
 export class GpuServerClient {
@@ -16,6 +16,13 @@ export class GpuServerClient {
 
   async callVlmAnalyze(req: VlmAnalyzeRequest): Promise<void> {
     await axios.post(`${this.baseUrl}/vlm/analyze`, req, {
+      headers: { 'X-Internal-Token': this.token },
+      timeout: 10_000,
+    });
+  }
+
+  async callBlogGenerate(req: BlogGenerateRequest): Promise<void> {
+    await axios.post(`${this.baseUrl}/blog/generate`, req, {
       headers: { 'X-Internal-Token': this.token },
       timeout: 10_000,
     });
