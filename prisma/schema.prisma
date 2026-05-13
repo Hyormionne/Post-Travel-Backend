@@ -55,11 +55,14 @@ model User {
 }
 
 model TravelRoom {
-  id          String   @id @default(uuid()) @db.Uuid
-  title       String?
-  inviteToken String   @unique @map("invite_token")
-  createdBy   String   @map("created_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid()) @db.Uuid
+  title         String?
+  markerShape   String?  @map("marker_shape")
+  markerBgColor String?  @map("marker_bg_color")
+  markerEmoji   String?  @map("marker_emoji")
+  inviteToken   String   @unique @map("invite_token")
+  createdBy     String   @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
 
   owner    User            @relation("owner", fields: [createdBy], references: [id])
   members  RoomMember[]
