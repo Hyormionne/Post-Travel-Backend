@@ -35,6 +35,14 @@ export class RoomsService {
     });
   }
 
+  async findAllForUser(userId: string): Promise<TravelRoom[]> {
+    const memberships = await this.prisma.roomMember.findMany({
+      where: { userId },
+      include: { room: true },
+    });
+    return memberships.map((membership) => membership.room);
+  }
+
   async deleteById(roomId: string): Promise<void> {
     await this.prisma.travelRoom.delete({ where: { id: roomId } });
   }
