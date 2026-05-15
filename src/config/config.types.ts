@@ -12,6 +12,7 @@ export interface AppEnv {
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_CALLBACK_URL: string;
   FRONTEND_URL: string;
+  CORS_ORIGINS: string;
   GPU_SERVER_URL: string;
   GPU_INTERNAL_TOKEN: string;
   JOB_STALL_TIMEOUT_MS: number;
