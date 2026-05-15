@@ -15,8 +15,12 @@ describe('WebhookController', () => {
     photo: { findMany: jest.Mock; updateMany: jest.Mock };
     blog: { create: jest.Mock };
     blogPhoto: { createMany: jest.Mock };
-    cluster: { create: jest.Mock };
-    clusterPhoto: { createMany: jest.Mock };
+    cluster: {
+      create: jest.Mock;
+      deleteMany: jest.Mock;
+      findMany: jest.Mock;
+    };
+    clusterPhoto: { createMany: jest.Mock; deleteMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let realtime: jest.Mocked<Partial<RealtimeService>>;
@@ -45,11 +49,16 @@ describe('WebhookController', () => {
       },
       blogPhoto: { createMany: jest.fn().mockResolvedValue({}) },
       cluster: {
+        findMany: jest.fn().mockResolvedValue([]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
         create: jest
           .fn()
           .mockResolvedValue({ id: 'cluster-1', title: 'Beach' }),
       },
-      clusterPhoto: { createMany: jest.fn().mockResolvedValue({}) },
+      clusterPhoto: {
+        createMany: jest.fn().mockResolvedValue({}),
+        deleteMany: jest.fn().mockResolvedValue({}),
+      },
       $transaction: jest.fn().mockImplementation(async (fn: unknown) => {
         if (typeof fn === 'function')
           return (fn as (tx: unknown) => Promise<unknown>)(prisma);
@@ -137,6 +146,63 @@ describe('WebhookController', () => {
       'cluster:created',
       expect.any(Object),
     );
+  });
+
+  it('creates VLM_SCENE clusters by grouping room photos by sceneLabel when cluster is omitted', async () => {
+    prisma.photo.findMany.mockResolvedValue([
+      { id: 'p1', sceneLabel: 'beach' },
+      { id: 'p2', sceneLabel: 'beach' },
+      { id: 'p3', sceneLabel: 'mountain' },
+    ]);
+    prisma.cluster.create
+      .mockResolvedValueOnce({ id: 'cluster-beach', title: 'beach' })
+      .mockResolvedValueOnce({ id: 'cluster-mountain', title: 'mountain' });
+
+    await controller.receiveCallback('job-1', {
+      results: [
+        {
+          photoId: 'p1',
+          sceneLabel: 'beach',
+          aiCaption: 'Beach view',
+          aiKeywords: ['beach'],
+        },
+        {
+          photoId: 'p2',
+          sceneLabel: 'beach',
+          aiCaption: 'Another beach view',
+          aiKeywords: ['beach'],
+        },
+        {
+          photoId: 'p3',
+          sceneLabel: 'mountain',
+          aiCaption: 'Mountain view',
+          aiKeywords: ['mountain'],
+        },
+      ],
+    });
+
+    expect(prisma.cluster.deleteMany).toHaveBeenCalledWith({
+      where: { roomId: 'room-1', clusterType: ClusterType.VLM_SCENE },
+    });
+    expect(prisma.cluster.create).toHaveBeenCalledTimes(2);
+    expect(prisma.cluster.create).toHaveBeenCalledWith({
+      data: {
+        roomId: 'room-1',
+        title: 'beach',
+        summary: null,
+        sceneLabel: 'beach',
+        clusterType: ClusterType.VLM_SCENE,
+      },
+    });
+    expect(prisma.clusterPhoto.createMany).toHaveBeenCalledWith({
+      data: [
+        { clusterId: 'cluster-beach', photoId: 'p1' },
+        { clusterId: 'cluster-beach', photoId: 'p2' },
+      ],
+    });
+    expect(prisma.clusterPhoto.createMany).toHaveBeenCalledWith({
+      data: [{ clusterId: 'cluster-mountain', photoId: 'p3' }],
+    });
   });
 
   it('rejects cluster photoIds outside the processing job room', async () => {
