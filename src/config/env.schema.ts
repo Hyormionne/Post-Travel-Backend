@@ -16,6 +16,17 @@ export const envSchema = Joi.object({
   JWT_ACCESS_EXPIRES: Joi.string().default('1h'),
   JWT_REFRESH_EXPIRES: Joi.string().default('14d'),
   GOOGLE_CLIENT_ID: Joi.string().required(),
+  FRONTEND_URL: Joi.string().uri().optional(),
+  CORS_ORIGINS: Joi.string()
+    .custom((value: string, helpers) => {
+      for (const origin of value.split(',').map((item) => item.trim())) {
+        if (!origin) continue;
+        const { error } = Joi.string().uri().validate(origin);
+        if (error) return helpers.error('string.uri');
+      }
+      return value;
+    }, 'comma-separated origin list')
+    .optional(),
   AWS_REGION: Joi.string().default('ap-northeast-2'),
   S3_BUCKET: Joi.string().required(),
   S3_PRESIGNED_EXPIRES: Joi.number().default(300),
@@ -37,4 +48,22 @@ export const envSchema = Joi.object({
     then: Joi.string().uri().required(),
     otherwise: Joi.string().uri().default('http://localhost:3000'),
   }),
-});
+}).custom(
+  (
+    value: { NODE_ENV?: string; CORS_ORIGINS?: string; FRONTEND_URL?: string },
+    helpers,
+  ) => {
+    if (
+      value.NODE_ENV === 'production' &&
+      !value.CORS_ORIGINS &&
+      !value.FRONTEND_URL
+    ) {
+      return helpers.message({
+        custom:
+          'CORS_ORIGINS or FRONTEND_URL is required when NODE_ENV is production',
+      });
+    }
+
+    return value;
+  },
+);
