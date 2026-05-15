@@ -219,9 +219,9 @@ describe('GPU Jobs Webhook E2E', () => {
       .expect(201);
 
     const clusters = await prisma.cluster.findMany({
-      where: { roomId, clusterType: 'VLM_SCENE' },
+      where: { roomId, clusterType: 'VLM_SCENE', title: 'Beach Day' },
     });
-    expect(clusters.length).toBeGreaterThanOrEqual(1);
+    expect(clusters).toHaveLength(1);
     expect(clusters[0].title).toBe('Beach Day');
 
     await prisma.processingJob
