@@ -107,6 +107,8 @@ export class WebhookController {
             title: cluster.title,
           });
         });
+      } else if (dto.results.length > 0) {
+        await this.rebuildVlmSceneClustersFromPhotoLabels(processingJob.roomId);
       }
 
       const updated = await this.prisma.processingJob.update({
@@ -134,6 +136,66 @@ export class WebhookController {
       });
       throw err;
     }
+  }
+
+  private async rebuildVlmSceneClustersFromPhotoLabels(
+    roomId: string,
+  ): Promise<void> {
+    const photos = await this.prisma.photo.findMany({
+      where: { roomId, sceneLabel: { not: null } },
+      select: { id: true, sceneLabel: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const photoIdsByScene = new Map<string, string[]>();
+    for (const photo of photos) {
+      const sceneLabel = photo.sceneLabel?.trim();
+      if (!sceneLabel) continue;
+
+      const existing = photoIdsByScene.get(sceneLabel) ?? [];
+      existing.push(photo.id);
+      photoIdsByScene.set(sceneLabel, existing);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const existingClusters = await tx.cluster.findMany({
+        where: { roomId, clusterType: ClusterType.VLM_SCENE },
+        select: { id: true },
+      });
+      const existingClusterIds = existingClusters.map((cluster) => cluster.id);
+
+      if (existingClusterIds.length > 0) {
+        await tx.clusterPhoto.deleteMany({
+          where: { clusterId: { in: existingClusterIds } },
+        });
+      }
+
+      await tx.cluster.deleteMany({
+        where: { roomId, clusterType: ClusterType.VLM_SCENE },
+      });
+
+      for (const [sceneLabel, photoIds] of photoIdsByScene) {
+        const cluster = await tx.cluster.create({
+          data: {
+            roomId,
+            title: sceneLabel,
+            summary: null,
+            sceneLabel,
+            clusterType: ClusterType.VLM_SCENE,
+          },
+        });
+        await tx.clusterPhoto.createMany({
+          data: photoIds.map((photoId) => ({
+            clusterId: cluster.id,
+            photoId,
+          })),
+        });
+        this.realtime.emitToRoom(roomId, 'cluster:created', {
+          clusterId: cluster.id,
+          title: cluster.title,
+        });
+      }
+    });
   }
 
   @ApiOperation({ summary: 'AI 블로그 생성 결과 콜백 수신 (GPU 서버 전용)' })
