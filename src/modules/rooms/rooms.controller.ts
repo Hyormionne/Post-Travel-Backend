@@ -62,6 +62,17 @@ export class RoomsController {
     return this.rooms.create(user.id, dto.title);
   }
 
+  @ApiOperation({ summary: '로그인 유저가 멤버인 Room 목록 조회' })
+  @ApiResponse({
+    status: 200,
+    description: '조회 성공',
+    schema: { example: [ROOM_EXAMPLE] },
+  })
+  @Get()
+  async getRooms(@CurrentUser() user: AuthenticatedUser) {
+    return this.rooms.findAllForUser(user.id);
+  }
+
   @ApiOperation({ summary: '초대 토큰으로 방 참가 (JWT 필수)' })
   @ApiResponse({
     status: 200,

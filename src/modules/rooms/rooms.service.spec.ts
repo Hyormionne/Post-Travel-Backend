@@ -17,6 +17,7 @@ describe('RoomsService', () => {
     roomMember: {
       create: jest.Mock;
       findFirst: jest.Mock;
+      findMany: jest.Mock;
       findUnique: jest.Mock;
     };
     $transaction: jest.Mock;
@@ -36,6 +37,7 @@ describe('RoomsService', () => {
       roomMember: {
         create: jest.fn(),
         findFirst: jest.fn(),
+        findMany: jest.fn(),
         findUnique: jest.fn(),
       },
       $transaction: jest.fn(),
@@ -68,6 +70,25 @@ describe('RoomsService', () => {
   it('findById returns null when not found', async () => {
     prisma.travelRoom.findUnique.mockResolvedValue(null);
     await expect(service.findById('nonexistent')).resolves.toBeNull();
+  });
+
+  it('findAllForUser returns rooms from matching memberships', async () => {
+    const rooms = [
+      { id: 'room-1', title: 'Trip 1' },
+      { id: 'room-2', title: 'Trip 2' },
+    ];
+    prisma.roomMember.findMany.mockResolvedValue([
+      { id: 'member-1', userId: 'user-1', roomId: 'room-1', room: rooms[0] },
+      { id: 'member-2', userId: 'user-1', roomId: 'room-2', room: rooms[1] },
+    ]);
+
+    const result = await service.findAllForUser('user-1');
+
+    expect(prisma.roomMember.findMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      include: { room: true },
+    });
+    expect(result).toEqual(rooms);
   });
 
   it('joinByToken throws NotFoundException if token is invalid', async () => {

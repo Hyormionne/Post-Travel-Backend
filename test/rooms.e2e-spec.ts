@@ -99,6 +99,17 @@ describe('Rooms E2E', () => {
     expect(body.members[0].role).toBe('OWNER');
   });
 
+  it('GET /rooms — 로그인 유저가 멤버인 방 목록 조회', async () => {
+    const res = await request(app.getHttpServer() as Server)
+      .get('/rooms')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    const body = res.body as RoomBody[];
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.map((room) => room.id)).toContain(roomId);
+  });
+
   it('GET /rooms/:roomId — 403 (비멤버)', async () => {
     await request(app.getHttpServer() as Server)
       .post('/auth/signup')
